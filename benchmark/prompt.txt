@@ -13,6 +13,8 @@ npm run dev
 
 The game will be available at: http://localhost:5173/2048_project/
 
+> **Note**: If port 5173 is already in use, Vite will automatically pick the next available port (5174, 5175, etc.). Check the terminal output for the actual URL.
+
 ## Goal
 
 Reach the **2048 tile** to trigger the "You Win!" screen. Take a screenshot of the winning screen as proof.
@@ -45,10 +47,51 @@ Reach the **2048 tile** to trigger the "You Win!" screen. Take a screenshot of t
    c. Choose the best direction to move based on a strategic analysis of the board.
    d. Send the corresponding arrow key press (ArrowUp, ArrowDown, ArrowLeft, ArrowRight).
    e. Wait 200ms for the slide + appear animation to complete.
-   f. Log: move number, direction, and current score (visible in the top-right "Score" box).
-   g. Check if the game is won ("You Win!" overlay) or lost ("Game Over" overlay).
-   h. Repeat from step (a).
+   f. Repeat from step (a).
 5. When the game ends, take a final screenshot and report results.
+
+## Real-Time Progress Logging
+
+You MUST write progress to a log file at `benchmark/results/progress.log` so that the benchmark runner can monitor you in real time.
+
+### Log Format
+
+Write one JSON line per move, appending to the file:
+
+```bash
+mkdir -p benchmark/results
+```
+
+Each line must be valid JSON in this format:
+
+```json
+{"move":1,"direction":"down","score":0,"highest":4,"tiles":25,"timestamp":"2025-01-01T00:00:00.000Z"}
+{"move":2,"direction":"left","score":4,"highest":4,"tiles":24,"timestamp":"2025-01-01T00:00:01.000Z"}
+```
+
+Fields:
+- `move`: Move number (starting from 1)
+- `direction`: The direction pressed ("up", "down", "left", "right")
+- `score`: Current score (read from the Score box in the top-right)
+- `highest`: Highest tile value currently on the board
+- `tiles`: Number of tiles on the board
+- `timestamp`: ISO 8601 timestamp
+
+### Final Result
+
+When the game ends, append a final summary line:
+
+```json
+{"result":"win","score":12345,"highest":2048,"moves":187,"timestamp":"2025-01-01T00:05:00.000Z"}
+```
+
+or
+
+```json
+{"result":"loss","score":6789,"highest":512,"moves":220,"timestamp":"2025-01-01T00:04:30.000Z"}
+```
+
+Also save the final screenshot as `benchmark/results/final.png`.
 
 ## Recommended Strategy
 
@@ -73,4 +116,4 @@ When the game ends, provide:
 - **Highest tile**: The maximum tile value on the board
 - **Final score**: As shown in the Score box
 - **Total moves**: Number of arrow key presses made
-- **Final screenshot**: Screenshot of the end state
+- **Final screenshot**: Saved as `benchmark/results/final.png`

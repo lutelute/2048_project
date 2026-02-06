@@ -1,5 +1,6 @@
 node_modules/
 dist/
 benchmark/_frames/
+benchmark/results/
 *.local
 .DS_Store

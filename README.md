@@ -35,40 +35,114 @@ This tests an AI agent's ability to:
   <img src="benchmark/assets/hero.png" alt="2048 mid-game screenshot" width="400" />
 </p>
 
-## Quick Start
+---
+
+## Running the Benchmark (Step by Step)
+
+### Prerequisites
+
+- Node.js 20+
+- An AI coding agent with shell access (Claude Code, Cursor, Cline, Aider, etc.)
+
+### 1. Prepare agent directories
+
+Each AI agent gets its own isolated copy of the project. Create a workspace and clone one copy per agent:
 
 ```bash
-# Install
-npm install
+mkdir -p benchmark_runs
+cd benchmark_runs
 
-# Dev server
-npm run dev
-
-# Build
-npm run build
+# One directory per AI agent
+git clone https://github.com/lutelute/2048_project.git claude
+git clone https://github.com/lutelute/2048_project.git gpt
+git clone https://github.com/lutelute/2048_project.git gemini
 ```
+
+### 2. Give the prompt to each agent
+
+Open a separate terminal for each AI agent. Launch the agent CLI with the corresponding directory as the working directory, and paste the contents of [`benchmark/prompt.txt`](benchmark/prompt.txt) as the prompt.
+
+```bash
+# Terminal 1 — Claude Code
+cd benchmark_runs/claude
+claude "$(cat benchmark/prompt.txt)"
+
+# Terminal 2 — Another agent
+cd benchmark_runs/gpt
+# <paste prompt.txt content into the agent's input>
+
+# Terminal 3 — Another agent
+cd benchmark_runs/gemini
+# <paste prompt.txt content into the agent's input>
+```
+
+Each agent will:
+1. `npm install` + `npm run dev` (Vite auto-assigns an available port)
+2. Install Playwright if needed
+3. Launch a browser, navigate to the game
+4. Play the game, writing real-time progress to `benchmark/results/progress.log`
+
+### 3. Monitor progress in real time
+
+Open a **4th terminal** and watch all agents simultaneously:
+
+```bash
+cd benchmark_runs
+
+# Option A: Use the watch script
+./claude/benchmark/watch.sh claude gpt gemini
+
+# Option B: Simple tail (shows file headers when switching between agents)
+tail -f */benchmark/results/progress.log
+```
+
+Each log line is JSON:
+
+```json
+{"move":42,"direction":"down","score":1280,"highest":256,"tiles":18,"timestamp":"..."}
+```
+
+When an agent finishes, it writes a final summary:
+
+```json
+{"result":"win","score":12345,"highest":2048,"moves":187,"timestamp":"..."}
+```
+
+### 4. Compare results
+
+After all agents finish, check each agent's results:
+
+```bash
+# See final result of each agent
+tail -1 claude/benchmark/results/progress.log
+tail -1 gpt/benchmark/results/progress.log
+tail -1 gemini/benchmark/results/progress.log
+
+# View final screenshots
+open */benchmark/results/final.png
+```
+
+### Quick Reference Table
+
+| Step | What | Where |
+|---|---|---|
+| Clone | `git clone ... <agent_name>` | One per agent |
+| Prompt | Paste `benchmark/prompt.txt` | Each agent's CLI |
+| Monitor | `tail -f */benchmark/results/progress.log` | Separate terminal |
+| Results | `tail -1 */benchmark/results/progress.log` | After completion |
+| Screenshots | `*/benchmark/results/final.png` | After completion |
+
+---
 
 ## The Benchmark Challenge
 
-### For AI Agents
+### Rules
 
-Give your AI agent the prompt in [`benchmark/prompt.txt`](benchmark/prompt.txt). The agent must:
-
-1. Launch a browser with Playwright
-2. Navigate to the game
-3. Read the board via screenshots
-4. Play using only arrow key presses
-5. Reach the 2048 tile
-
-**No source code modification, no JS injection, no Undo button.**
-
-### Full Specification
-
-See [`benchmark/CHALLENGE.md`](benchmark/CHALLENGE.md) for:
-- Detailed rules and constraints
-- Evaluation criteria (success rate, score, efficiency)
-- Strategy tips
-- Difficulty variants (4×4, target 4096, etc.)
+- **GUI-only**: Must use browser automation (Playwright). No source code modification, no JS injection.
+- **Screenshot-based**: Must read the board visually from screenshots.
+- **Arrow keys only**: Same inputs as a human player.
+- **No Undo**: Each move is final.
+- **Single game**: Play from "New Game" to Win/Loss.
 
 ### Evaluation Metrics
 
@@ -79,7 +153,7 @@ See [`benchmark/CHALLENGE.md`](benchmark/CHALLENGE.md) for:
 | Score | Final game score |
 | Moves | Total arrow key presses |
 | Efficiency | Score per move |
-| Consistency | Win rate over 5 attempts |
+| Consistency | Win rate over N attempts |
 
 ### Difficulty Variants
 
@@ -92,6 +166,12 @@ Edit `src/game/constants.ts` to adjust:
 | Extended (5×5) | 5 | 4096 | Hard |
 | Expert (4×4) | 4 | 4096 | Expert |
 
+### Full Specification
+
+See [`benchmark/CHALLENGE.md`](benchmark/CHALLENGE.md) for detailed rules, strategy tips, and evaluation criteria.
+
+---
+
 ## Game Features
 
 - 5×5 sliding tile grid
@@ -101,17 +181,6 @@ Edit `src/game/constants.ts` to adjust:
 - Undo (single step)
 - Win/Game Over overlays
 - Fully responsive (mobile-friendly)
-
-## Generating Demo Assets
-
-To regenerate the GIF and screenshots:
-
-```bash
-npm run dev &
-node benchmark/capture-demo.mjs http://localhost:5173/2048_project/
-```
-
-Requires: [Playwright](https://playwright.dev/), [ffmpeg](https://ffmpeg.org/)
 
 ## Tech Stack
 
@@ -125,7 +194,7 @@ Requires: [Playwright](https://playwright.dev/), [ffmpeg](https://ffmpeg.org/)
 ```
 src/
   game/         # Pure game logic (no React dependency)
-    types.ts    # Type definitions (Tile, Direction, GameState)
+    types.ts    # Type definitions
     constants.ts # Grid size, colors, timing
     logic.ts    # Core functions: move, merge, canMove, hasWon
   hooks/        # React hooks
@@ -133,18 +202,16 @@ src/
     useKeyboard.ts # Arrow key / WASD input
     useSwipe.ts # Touch swipe detection
   components/   # UI components
-    Board.tsx   # Grid + tile layer + overlay
-    Tile.tsx    # Individual tile with animations
-    Header.tsx  # Title + score display
-    Controls.tsx # New Game + Undo buttons
-    GameOverlay.tsx # Win/Lose overlay
+    Board.tsx, Tile.tsx, Header.tsx, Controls.tsx, GameOverlay.tsx
   utils/
     storage.ts  # localStorage helpers
 benchmark/
+  prompt.txt    # Prompt to give to AI agents
   CHALLENGE.md  # Full benchmark specification
-  prompt.txt    # Copy-paste prompt for AI agents
+  watch.sh      # Real-time multi-agent monitor
   capture-demo.mjs # GIF generation script
   assets/       # Demo GIF + screenshots
+  results/      # Created by agents (progress.log, final.png)
 ```
 
 ## License
