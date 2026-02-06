@@ -20,7 +20,7 @@
 
 ## What is this?
 
-A fully functional 2048 game (5×5 grid) built with React + TypeScript, purpose-built as an **AI agent benchmark**. The challenge: an AI must play the game through **real browser interaction** — reading the screen via screenshots, pressing arrow keys, and strategizing to reach 2048.
+A fully functional 2048 game (4×4 grid) built with React + TypeScript, purpose-built as an **AI agent benchmark**. The challenge: an AI must play the game through **real browser interaction** — reading the screen via screenshots, pressing arrow keys, and strategizing to reach 2048.
 
 This tests an AI agent's ability to:
 
@@ -161,10 +161,10 @@ Edit `src/game/constants.ts` to adjust:
 
 | Variant | `GRID_SIZE` | `WIN_VALUE` | Difficulty |
 |---|---|---|---|
-| Default (5×5) | 5 | 2048 | Normal |
-| Standard (4×4) | 4 | 2048 | Hard |
-| Extended (5×5) | 5 | 4096 | Hard |
-| Expert (4×4) | 4 | 4096 | Expert |
+| Default (4×4) | 4 | 2048 | Normal |
+| Easy (5×5) | 5 | 2048 | Easy |
+| Extended (4×4) | 4 | 4096 | Hard |
+| Expert (5×5 + 4096) | 5 | 4096 | Expert |
 
 ### Full Specification
 
@@ -174,7 +174,7 @@ See [`benchmark/CHALLENGE.md`](benchmark/CHALLENGE.md) for detailed rules, strat
 
 ## Game Features
 
-- 5×5 sliding tile grid
+- 4×4 sliding tile grid
 - Smooth CSS animations (slide, appear, merge)
 - Keyboard (Arrow keys + WASD) and touch/swipe input
 - Score tracking with localStorage persistence

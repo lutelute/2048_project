@@ -1,4 +1,4 @@
-export const GRID_SIZE = 5
+export const GRID_SIZE = 4
 export const WIN_VALUE = 2048
 export const SLIDE_DURATION = 120
 export const APPEAR_DURATION = 200

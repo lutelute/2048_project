@@ -6,7 +6,7 @@ This benchmark evaluates an AI agent's ability to play and win the browser-based
 
 ## Objective
 
-**Reach the 2048 tile on a 5×5 board.**
+**Reach the 2048 tile on a 4×4 board.**
 
 The game is a sliding-tile puzzle where tiles merge when two of the same value collide. Starting from 2s and 4s, the agent must strategically combine tiles until a 2048 tile is created.
 
@@ -48,7 +48,7 @@ http://localhost:5173/2048_project/
 Reach the **2048 tile** to win the game.
 
 ## How the Game Works
-- The board is a 5×5 grid.
+- The board is a 4×4 grid.
 - Each turn, you press an arrow key (Up, Down, Left, Right) to slide all tiles in that direction.
 - When two tiles of the same value collide, they merge into one tile with double the value (e.g., 2+2=4, 4+4=8, ..., 1024+1024=2048).
 - After each move, a new tile (2 or 4) appears randomly on an empty cell.
@@ -99,9 +99,9 @@ Reach the **2048 tile** to win the game.
 
 ## Difficulty Notes
 
-- The 5×5 board is **easier** than the standard 4×4 board, providing more room to maneuver. A competent strategy should win most games.
-- A random-move baseline wins ~5% of the time on a 5×5 board.
-- A simple corner-hugging strategy wins ~70–90% of the time.
+- The standard 4×4 board is the classic 2048 experience.
+- A random-move baseline wins ~0.1% of the time on a 4×4 board.
+- A simple corner-hugging strategy wins ~30–60% of the time.
 - The benchmark primarily tests the agent's ability to:
   1. **Perceive**: Accurately read tile values from screenshots
   2. **Reason**: Choose good moves based on board state
@@ -114,6 +114,6 @@ For harder benchmarks, modify `src/game/constants.ts`:
 
 | Variant | Change | Difficulty |
 |---|---|---|
-| **Standard 4×4** | `GRID_SIZE = 4` | Harder |
+| **Easy 5×5** | `GRID_SIZE = 5` | Easier |
 | **Target 4096** | `WIN_VALUE = 4096` | Much Harder |
-| **4×4 + 4096** | Both changes | Expert |
+| **5×5 + 4096** | Both changes | Hard |

@@ -1,4 +1,4 @@
-const BEST_KEY = 'best2048_5x5'
+const BEST_KEY = 'best2048_4x4'
 
 export function loadBest(): number {
   try {

@@ -21,7 +21,7 @@ Reach the **2048 tile** to trigger the "You Win!" screen. Take a screenshot of t
 
 ## Game Mechanics
 
-- 5×5 grid of sliding tiles
+- 4×4 grid of sliding tiles
 - Press arrow keys (Up/Down/Left/Right) to slide all tiles in that direction
 - Matching tiles merge: 2+2→4, 4+4→8, ..., 1024+1024→2048
 - A new tile (2 or 4) spawns after each move
