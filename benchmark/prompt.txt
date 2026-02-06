@@ -2,9 +2,11 @@ You are tasked with playing and winning a 2048 game running in a local browser.
 
 ## Setup
 
-You are already in the project directory. Start the game server:
+Clone the repository and start the game server:
 
 ```bash
+git clone https://github.com/lutelute/2048_project.git
+cd 2048_project
 npm install
 npm run dev
 ```

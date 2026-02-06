@@ -20,9 +20,11 @@ The game is a sliding-tile puzzle where tiles merge when two of the same value c
 
 ## Setup
 
-The AI agent's CLI is launched with the project directory as working directory.
+Clone the repository and start the game server:
 
 ```bash
+git clone https://github.com/lutelute/2048_project.git
+cd 2048_project
 npm install
 npm run dev
 # Game is available at http://localhost:5173/2048_project/
