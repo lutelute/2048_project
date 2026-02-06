@@ -1,0 +1,74 @@
+You are tasked with playing and winning a 2048 game running in a local browser.
+
+## Setup
+
+First, start the game server:
+
+```bash
+cd /Users/shigenoburyuto/Documents/GitHub/2048_project
+npm run dev
+```
+
+The game will be available at: http://localhost:5173/2048_project/
+
+## Goal
+
+Reach the **2048 tile** to trigger the "You Win!" screen. Take a screenshot of the winning screen as proof.
+
+## Game Mechanics
+
+- 5×5 grid of sliding tiles
+- Press arrow keys (Up/Down/Left/Right) to slide all tiles in that direction
+- Matching tiles merge: 2+2→4, 4+4→8, ..., 1024+1024→2048
+- A new tile (2 or 4) spawns after each move
+- You win when a 2048 tile appears
+- You lose if no valid moves remain
+
+## Constraints
+
+- You MUST interact with the game via browser automation (e.g., Playwright). Use keyboard arrow key presses to make moves.
+- You MUST read the board state by taking screenshots and visually parsing tile positions and values.
+- You MUST NOT modify any source code, inject JavaScript, call game functions directly, or manipulate localStorage.
+- You MUST NOT use the "Undo" button.
+- You must play a single continuous game from "New Game" to completion.
+
+## Procedure
+
+1. Install Playwright if needed: `npx playwright install chromium`
+2. Launch a Chromium browser and navigate to the game URL.
+3. Click the "New Game" button to start fresh.
+4. Play the game in a loop:
+   a. Take a screenshot of the current board.
+   b. Parse the tile values and positions from the screenshot (read the numbers displayed on each tile).
+   c. Choose the best direction to move based on a strategic analysis of the board.
+   d. Send the corresponding arrow key press (ArrowUp, ArrowDown, ArrowLeft, ArrowRight).
+   e. Wait 200ms for the slide + appear animation to complete.
+   f. Log: move number, direction, and current score (visible in the top-right "Score" box).
+   g. Check if the game is won ("You Win!" overlay) or lost ("Game Over" overlay).
+   h. Repeat from step (a).
+5. When the game ends, take a final screenshot and report results.
+
+## Recommended Strategy
+
+Use the **monotonic corner strategy**:
+
+1. Pick a corner (e.g., bottom-left) as the "anchor" for the largest tile.
+2. Prefer moving DOWN and LEFT. These should be your primary moves.
+3. Only move UP or RIGHT when DOWN/LEFT are not possible or clearly inferior.
+4. Keep tiles in decreasing order along the bottom row (left to right: biggest → smallest).
+5. Try to build a "snake" pattern: bottom row left-to-right, then second row right-to-left, etc.
+6. Avoid moves that pull the biggest tile away from its corner.
+7. When deciding between moves, evaluate:
+   - Does the move keep the highest tile in the corner?
+   - Does the move create merges?
+   - Does the move maintain monotonic ordering?
+
+## Output
+
+When the game ends, provide:
+
+- **Result**: Win or Loss
+- **Highest tile**: The maximum tile value on the board
+- **Final score**: As shown in the Score box
+- **Total moves**: Number of arrow key presses made
+- **Final screenshot**: Screenshot of the end state

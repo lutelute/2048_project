@@ -1,0 +1,5 @@
+node_modules/
+dist/
+benchmark/_frames/
+*.local
+.DS_Store
