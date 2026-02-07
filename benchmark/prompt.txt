@@ -36,10 +36,32 @@ Reach the **2048 tile** to trigger the "You Win!" screen. Take a screenshot of t
 - You MUST NOT use the "Undo" button.
 - You must play a single continuous game from "New Game" to completion.
 
+## Browser: Headed Mode (IMPORTANT)
+
+You MUST launch the browser in **headed mode** (visible window), NOT headless. This allows the benchmark runner to visually observe the game being played in real time.
+
+When using Playwright:
+
+```javascript
+// CORRECT — headed mode, browser window is visible
+const browser = await chromium.launch({ headless: false });
+
+// WRONG — do NOT use headless mode
+// const browser = await chromium.launch({ headless: true });
+```
+
+Set a reasonable viewport size so the game board is fully visible:
+
+```javascript
+const page = await browser.newPage({ viewport: { width: 520, height: 700 } });
+```
+
+**Do NOT close the browser until you have reported the final results.** Keep it open so the observer can see the final board state.
+
 ## Procedure
 
 1. Install Playwright if needed: `npx playwright install chromium`
-2. Launch a Chromium browser and navigate to the game URL.
+2. Launch Chromium in **headed mode** (`headless: false`) and navigate to the game URL.
 3. Click the "New Game" button to start fresh.
 4. Play the game in a loop:
    a. Take a screenshot of the current board.
@@ -49,6 +71,7 @@ Reach the **2048 tile** to trigger the "You Win!" screen. Take a screenshot of t
    e. Wait 200ms for the slide + appear animation to complete.
    f. Repeat from step (a).
 5. When the game ends, take a final screenshot and report results.
+6. Keep the browser open for the observer to see the final state.
 
 ## Real-Time Progress Logging
 
@@ -65,8 +88,8 @@ mkdir -p benchmark/results
 Each line must be valid JSON in this format:
 
 ```json
-{"move":1,"direction":"down","score":0,"highest":4,"tiles":25,"timestamp":"2025-01-01T00:00:00.000Z"}
-{"move":2,"direction":"left","score":4,"highest":4,"tiles":24,"timestamp":"2025-01-01T00:00:01.000Z"}
+{"move":1,"direction":"down","score":0,"highest":4,"tiles":3,"timestamp":"2025-01-01T00:00:00.000Z"}
+{"move":2,"direction":"left","score":4,"highest":4,"tiles":4,"timestamp":"2025-01-01T00:00:01.000Z"}
 ```
 
 Fields:
