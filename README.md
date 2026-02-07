@@ -44,56 +44,44 @@ This tests an AI agent's ability to:
 - Node.js 20+
 - An AI coding agent with shell access (Claude Code, Cursor, Cline, Aider, etc.)
 
-### 1. Prepare agent directories
+### 1. Give this prompt to each AI agent
 
-Each AI agent gets its own isolated copy of the project. Create a workspace and clone one copy per agent:
+Open a separate terminal for each AI. Paste the following as the **entire prompt**:
 
-```bash
-mkdir -p benchmark_runs
-cd benchmark_runs
+```
+Clone the 2048 AI benchmark repo and play the game to reach the 2048 tile.
 
-# One directory per AI agent
-git clone https://github.com/lutelute/2048_project.git claude
-git clone https://github.com/lutelute/2048_project.git gpt
-git clone https://github.com/lutelute/2048_project.git gemini
+git clone https://github.com/lutelute/2048_project.git
+cd 2048_project
+
+Read benchmark/prompt.txt for the full instructions, then execute them.
+The file contains the complete game rules, setup steps, constraints,
+progress logging format, and strategy tips.
+
+Key points:
+- Run `npm install` and `npm run dev` to start the game server
+- Use Playwright with `headless: false` (visible browser window) to play
+- Read the board by taking screenshots, send arrow key presses to make moves
+- Write progress to benchmark/results/progress.log (one JSON line per move)
+- Save final screenshot as benchmark/results/final.png
+- Do NOT modify source code, inject JS, or use Undo
+
+Start now.
 ```
 
-### 2. Give the prompt to each agent
+That's it. Each agent will clone its own copy, install, launch the game, and start playing.
 
-Open a separate terminal for each AI agent. Launch the agent CLI with the corresponding directory as the working directory, and paste the contents of [`benchmark/prompt.txt`](benchmark/prompt.txt) as the prompt.
+> See [`benchmark/oneliner.md`](benchmark/oneliner.md) for an even shorter variant.
 
-```bash
-# Terminal 1 — Claude Code
-cd benchmark_runs/claude
-claude "$(cat benchmark/prompt.txt)"
+### 2. Monitor progress in real time
 
-# Terminal 2 — Another agent
-cd benchmark_runs/gpt
-# <paste prompt.txt content into the agent's input>
-
-# Terminal 3 — Another agent
-cd benchmark_runs/gemini
-# <paste prompt.txt content into the agent's input>
-```
-
-Each agent will:
-1. `npm install` + `npm run dev` (Vite auto-assigns an available port)
-2. Install Playwright if needed
-3. Launch a browser, navigate to the game
-4. Play the game, writing real-time progress to `benchmark/results/progress.log`
-
-### 3. Monitor progress in real time
-
-Open a **4th terminal** and watch all agents simultaneously:
+Each agent clones the repo into its own `2048_project/` directory. You can watch all of them from a separate terminal:
 
 ```bash
-cd benchmark_runs
-
-# Option A: Use the watch script
-./claude/benchmark/watch.sh claude gpt gemini
-
-# Option B: Simple tail (shows file headers when switching between agents)
-tail -f */benchmark/results/progress.log
+# Watch all agents' logs (adjust paths to where each agent's CLI is running)
+tail -f /path/to/agent_claude/2048_project/benchmark/results/progress.log \
+       /path/to/agent_gpt/2048_project/benchmark/results/progress.log \
+       /path/to/agent_gemini/2048_project/benchmark/results/progress.log
 ```
 
 Each log line is JSON:
@@ -102,35 +90,23 @@ Each log line is JSON:
 {"move":42,"direction":"down","score":1280,"highest":256,"tiles":18,"timestamp":"..."}
 ```
 
-When an agent finishes, it writes a final summary:
+When an agent finishes:
 
 ```json
 {"result":"win","score":12345,"highest":2048,"moves":187,"timestamp":"..."}
 ```
 
-### 4. Compare results
+Plus the browser windows stay open so you can see the final board visually.
 
-After all agents finish, check each agent's results:
+### 3. Compare results
 
 ```bash
-# See final result of each agent
-tail -1 claude/benchmark/results/progress.log
-tail -1 gpt/benchmark/results/progress.log
-tail -1 gemini/benchmark/results/progress.log
+# Final result of each agent (last line of each log)
+tail -1 /path/to/agent_*/2048_project/benchmark/results/progress.log
 
 # View final screenshots
-open */benchmark/results/final.png
+open /path/to/agent_*/2048_project/benchmark/results/final.png
 ```
-
-### Quick Reference Table
-
-| Step | What | Where |
-|---|---|---|
-| Clone | `git clone ... <agent_name>` | One per agent |
-| Prompt | Paste `benchmark/prompt.txt` | Each agent's CLI |
-| Monitor | `tail -f */benchmark/results/progress.log` | Separate terminal |
-| Results | `tail -1 */benchmark/results/progress.log` | After completion |
-| Screenshots | `*/benchmark/results/final.png` | After completion |
 
 ---
 
