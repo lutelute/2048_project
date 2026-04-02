@@ -11,9 +11,9 @@ npm install
 npm run dev
 ```
 
-The game will be available at: http://localhost:5173/2048_project/
+The game will be available at the URL shown in the terminal output (e.g., http://localhost:4001/2048_project/).
 
-> **Note**: If port 5173 is already in use, Vite will automatically pick the next available port (5174, 5175, etc.). Check the terminal output for the actual URL.
+> **Note**: The port may be pre-configured in vite.config.ts. Check the terminal output after `npm run dev` for the actual URL and use that exact URL.
 
 ## Goal
 

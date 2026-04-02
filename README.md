@@ -20,7 +20,7 @@
 
 ## What is this?
 
-A fully functional 2048 game (4×4 grid) built with React + TypeScript, purpose-built as an **AI agent benchmark**. The challenge: an AI must play the game through **real browser interaction** — reading the screen via screenshots, pressing arrow keys, and strategizing to reach 2048.
+A fully functional 2048 game (4x4 grid) built with React + TypeScript, purpose-built as an **AI agent benchmark**. The challenge: an AI must play the game through **real browser interaction** — reading the screen via screenshots, pressing arrow keys, and strategizing to reach 2048.
 
 This tests an AI agent's ability to:
 
@@ -75,13 +75,8 @@ That's it. Each agent will clone its own copy, install, launch the game, and sta
 
 ### 2. Monitor progress in real time
 
-Each agent clones the repo into its own `2048_project/` directory. You can watch all of them from a separate terminal:
-
 ```bash
-# Watch all agents' logs (adjust paths to where each agent's CLI is running)
-tail -f /path/to/agent_claude/2048_project/benchmark/results/progress.log \
-       /path/to/agent_gpt/2048_project/benchmark/results/progress.log \
-       /path/to/agent_gemini/2048_project/benchmark/results/progress.log
+tail -f /path/to/agent_*/2048_project/benchmark/results/progress.log
 ```
 
 Each log line is JSON:
@@ -96,17 +91,22 @@ When an agent finishes:
 {"result":"win","score":12345,"highest":2048,"moves":187,"timestamp":"..."}
 ```
 
-Plus the browser windows stay open so you can see the final board visually.
+### 3. Multi-agent race mode
 
-### 3. Compare results
+For running multiple agents side-by-side with a dashboard:
 
 ```bash
-# Final result of each agent (last line of each log)
-tail -1 /path/to/agent_*/2048_project/benchmark/results/progress.log
+# Setup (clones repo into runs/ for each agent)
+./benchmark/setup-race.sh
 
-# View final screenshots
-open /path/to/agent_*/2048_project/benchmark/results/final.png
+# Launch all agents + dashboard
+./benchmark/launch-race.sh
+
+# Or demo mode with preset AI
+./benchmark/race-demo.sh
 ```
+
+Dashboard: `http://localhost:4000`
 
 ---
 
@@ -137,10 +137,10 @@ Edit `src/game/constants.ts` to adjust:
 
 | Variant | `GRID_SIZE` | `WIN_VALUE` | Difficulty |
 |---|---|---|---|
-| Default (4×4) | 4 | 2048 | Normal |
-| Easy (5×5) | 5 | 2048 | Easy |
-| Extended (4×4) | 4 | 4096 | Hard |
-| Expert (5×5 + 4096) | 5 | 4096 | Expert |
+| Default (4x4) | 4 | 2048 | Normal |
+| Easy (5x5) | 5 | 2048 | Easy |
+| Extended (4x4) | 4 | 4096 | Hard |
+| Expert (5x5 + 4096) | 5 | 4096 | Expert |
 
 ### Full Specification
 
@@ -150,7 +150,7 @@ See [`benchmark/CHALLENGE.md`](benchmark/CHALLENGE.md) for detailed rules, strat
 
 ## Game Features
 
-- 4×4 sliding tile grid
+- 4x4 sliding tile grid
 - Smooth CSS animations (slide, appear, merge)
 - Keyboard (Arrow keys + WASD) and touch/swipe input
 - Score tracking with localStorage persistence
@@ -169,26 +169,36 @@ See [`benchmark/CHALLENGE.md`](benchmark/CHALLENGE.md) for detailed rules, strat
 
 ```
 src/
-  game/         # Pure game logic (no React dependency)
-    types.ts    # Type definitions
-    constants.ts # Grid size, colors, timing
-    logic.ts    # Core functions: move, merge, canMove, hasWon
-  hooks/        # React hooks
-    useGame.ts  # Main state management
+  game/           # Pure game logic (no React dependency)
+    types.ts      # Type definitions
+    constants.ts  # Grid size, colors, timing
+    logic.ts      # Core functions: move, merge, canMove, hasWon
+  hooks/          # React hooks
+    useGame.ts    # Main state management
     useKeyboard.ts # Arrow key / WASD input
-    useSwipe.ts # Touch swipe detection
-  components/   # UI components
+    useSwipe.ts   # Touch swipe detection
+  components/     # UI components
     Board.tsx, Tile.tsx, Header.tsx, Controls.tsx, GameOverlay.tsx
   utils/
-    storage.ts  # localStorage helpers
+    storage.ts    # localStorage helpers
 benchmark/
-  prompt.txt    # Prompt to give to AI agents
-  CHALLENGE.md  # Full benchmark specification
-  watch.sh      # Real-time multi-agent monitor
-  capture-demo.mjs # GIF generation script
-  assets/       # Demo GIF + screenshots
-  results/      # Created by agents (progress.log, final.png)
+  prompt.txt      # Prompt to give to AI agents
+  oneliner.md     # One-liner version of the prompt
+  CHALLENGE.md    # Full benchmark specification
+  play.mjs        # Preset AI auto-play script
+  dashboard-server.mjs  # Real-time race dashboard
+  dashboard.html  # Dashboard UI
+  summarize.mjs   # Result aggregation
+  setup-race.sh   # Multi-agent race setup
+  launch-race.sh  # Multi-agent race launcher
+  race-demo.sh    # Demo mode with preset AI
+  watch.sh        # Real-time log monitor
+  capture-demo.mjs # Demo GIF generation
+  assets/         # demo.gif, hero.png
+  results/        # Agent output (progress.log, final.png) — gitignored
 ```
+
+---
 
 ## License
 
