@@ -93,20 +93,31 @@ When an agent finishes:
 
 ### 3. Multi-agent race mode
 
-For running multiple agents side-by-side with a dashboard:
+For running multiple agents side-by-side with a real-time dashboard:
 
 ```bash
-# Setup (clones repo into runs/ for each agent)
+# Setup (one time): clone repos, symlink node_modules, install Playwright
 ./benchmark/setup-race.sh
 
-# Launch all agents + dashboard
+# Launch race (default: 100 games per agent)
 ./benchmark/launch-race.sh
 
-# Or demo mode with preset AI
-./benchmark/race-demo.sh
+# Or specify game count
+./benchmark/launch-race.sh 50
+
+# Stop all running processes
+./benchmark/stop-race.sh
 ```
 
 Dashboard: `http://localhost:4000`
+
+| Port | Agent |
+|------|-------|
+| 4000 | Dashboard |
+| 4001 | Claude Code |
+| 4002 | Codex |
+| 4003 | Gemini CLI |
+| 4004 | Local CLI |
 
 ---
 
@@ -185,17 +196,19 @@ benchmark/
   prompt.txt      # Prompt to give to AI agents
   oneliner.md     # One-liner version of the prompt
   CHALLENGE.md    # Full benchmark specification
-  play.mjs        # Preset AI auto-play script
-  dashboard-server.mjs  # Real-time race dashboard
+  play.mjs        # Preset AI auto-play script (single instance)
+  dashboard-server.mjs  # Real-time race dashboard server
   dashboard.html  # Dashboard UI
   summarize.mjs   # Result aggregation
-  setup-race.sh   # Multi-agent race setup
-  launch-race.sh  # Multi-agent race launcher
-  race-demo.sh    # Demo mode with preset AI
+  setup-race.sh   # Multi-agent race setup (clone, symlink, Playwright)
+  launch-race.sh  # Race launcher (servers + agents + dashboard)
+  stop-race.sh    # Stop all race processes
+  race-demo.sh    # Demo mode with AI CLI agents
   watch.sh        # Real-time log monitor
   capture-demo.mjs # Demo GIF generation
   assets/         # demo.gif, hero.png
   results/        # Agent output (progress.log, final.png) — gitignored
+runs/             # Per-agent cloned repos — gitignored
 ```
 
 ---
