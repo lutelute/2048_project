@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2048 AI Challenge — Headless Dashboard</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface-alt: #222633;
+    --border: #2a2e3d;
+    --text: #e4e6ed;
+    --text-dim: #8b8fa3;
+    --accent: #6c72ff;
+    --green: #34d399;
+    --red: #f87171;
+    --blue: #60a5fa;
+    --yellow: #fbbf24;
+    --orange: #fb923c;
+    --purple: #a78bfa;
+    --pink: #f472b6;
+    --radius: 12px;
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 12px 16px;
+  }
+
+  .header { text-align: center; margin-bottom: 12px; }
+  .header h1 {
+    font-size: 1.3rem; font-weight: 700; letter-spacing: -0.5px;
+    background: linear-gradient(135deg, var(--orange) 0%, var(--yellow) 50%, var(--green) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .header .sub { color: var(--text-dim); font-size: 0.7rem; margin-top: 2px; }
+  .header .sub span { color: var(--green); font-weight: 600; }
+
+  /* Leaderboard strip */
+  .leaderboard {
+    display: flex; gap: 8px; max-width: 1600px; margin: 0 auto 10px;
+    justify-content: center; flex-wrap: wrap;
+  }
+  .lb-chip {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 5px 14px 5px 10px; font-size: 0.72rem;
+  }
+  .lb-rank {
+    width: 20px; height: 20px; border-radius: 50%; display: flex;
+    align-items: center; justify-content: center; font-weight: 800;
+    font-size: 0.6rem; color: #fff; flex-shrink: 0;
+  }
+  .lb-rank-1 { background: linear-gradient(135deg, #fbbf24, #f59e0b); }
+  .lb-rank-2 { background: linear-gradient(135deg, #94a3b8, #64748b); }
+  .lb-rank-3 { background: linear-gradient(135deg, #cd7f32, #a0522d); }
+  .lb-rank-4 { background: var(--surface-alt); }
+  .lb-name { font-weight: 600; }
+  .lb-score { font-family: var(--mono); font-weight: 700; color: var(--yellow); }
+  .lb-winrate { font-family: var(--mono); font-size: 0.65rem; color: var(--green); }
+
+  /* Main grid */
+  .main-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 10px; max-width: 1600px; margin: 0 auto 10px;
+  }
+
+  .agent-col {
+    display: flex; flex-direction: column; gap: 8px;
+  }
+
+  /* Score card (compact) */
+  .score-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 10px 12px;
+    position: relative; overflow: hidden;
+  }
+  .score-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--border); transition: background 0.4s;
+  }
+  .score-card.status-playing::before { background: linear-gradient(90deg, var(--blue), var(--accent)); }
+  .score-card.status-waiting::before { background: var(--border); }
+
+  .sc-header { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .sc-name { font-size: 0.9rem; font-weight: 700; }
+  .sc-port { font-size: 0.55rem; font-family: var(--mono); color: var(--text-dim); background: var(--surface-alt); padding: 1px 5px; border-radius: 4px; }
+  .sc-algo { font-size: 0.5rem; font-family: var(--mono); color: var(--purple); background: rgba(167,139,250,0.1); padding: 1px 6px; border-radius: 4px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px; margin-left: auto;
+    font-size: 0.6rem; font-weight: 600; padding: 2px 8px; border-radius: 12px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .badge-waiting { background: #2a2e3d; color: #6b7089; }
+  .badge-playing { background: rgba(96,165,250,0.15); color: var(--blue); }
+  .pulse-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+  .badge-playing .pulse-dot { animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+
+  /* RL metrics row */
+  .rl-metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-bottom: 6px; }
+  .rl-metric {
+    background: var(--surface-alt); border-radius: 6px; padding: 6px; text-align: center;
+  }
+  .rl-metric-label { font-size: 0.5rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-dim); }
+  .rl-metric-value { font-size: 0.95rem; font-weight: 700; font-family: var(--mono); }
+  .rl-metric-value.score { color: var(--yellow); }
+  .rl-metric-value.winrate { color: var(--green); }
+  .rl-metric-value.games { color: var(--blue); }
+  .rl-metric-value.tile { color: var(--orange); }
+  .rl-metric-value.speed { color: var(--purple); }
+  .rl-metric-value.trend-up { color: var(--green); }
+  .rl-metric-value.trend-down { color: var(--red); }
+
+  /* Chart area */
+  .chart-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 8px; min-height: 100px;
+  }
+  .chart-title { font-size: 0.6rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .chart-box canvas { display: block; width: 100%; height: 80px; }
+
+  /* Tile distribution bar */
+  .tile-dist { display: flex; gap: 2px; align-items: flex-end; height: 40px; margin-top: 4px; }
+  .tile-bar {
+    flex: 1; border-radius: 3px 3px 0 0; min-height: 2px; position: relative;
+    transition: height 0.3s;
+  }
+  .tile-bar-label {
+    position: absolute; bottom: -14px; left: 50%; transform: translateX(-50%);
+    font-size: 0.45rem; font-family: var(--mono); color: var(--text-dim); white-space: nowrap;
+  }
+  .tile-bar-count {
+    position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+    font-size: 0.5rem; font-family: var(--mono); color: var(--text); font-weight: 600;
+  }
+
+  .milestones { display: flex; align-items: center; gap: 0; margin-top: 4px; }
+  .milestone {
+    display: flex; align-items: center; justify-content: center;
+    padding: 1px 4px; font-size: 0.5rem; font-weight: 700;
+    font-family: var(--mono); border-radius: 3px; background: var(--surface-alt); color: var(--text-dim);
+  }
+  .milestone.reached { color: #fff; }
+  .milestone-64.reached  { background: #3b82f6; }
+  .milestone-128.reached { background: #8b5cf6; }
+  .milestone-256.reached { background: #a855f7; }
+  .milestone-512.reached { background: #d946ef; }
+  .milestone-1024.reached { background: var(--orange); }
+  .milestone-2048.reached { background: var(--green); }
+  .milestone-connector { width: 4px; height: 2px; background: var(--border); flex-shrink: 0; }
+  .milestone-connector.reached { background: var(--accent); }
+
+  .refresh-indicator {
+    position: fixed; bottom: 8px; right: 12px; font-size: 0.6rem;
+    color: var(--text-dim); display: flex; align-items: center; gap: 4px;
+  }
+  .refresh-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--green); animation: blink 2s ease-in-out infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  @media (max-width: 1000px) {
+    .main-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>2048 AI Challenge &mdash; Headless Dashboard</h1>
+  <div class="sub">Polling <span>1s</span> &middot; <span id="server-time">--</span> &middot; Headless mode (no browser)</div>
+</div>
+
+<div class="leaderboard" id="leaderboard"></div>
+<div class="main-grid" id="main-grid"></div>
+
+<div class="refresh-indicator"><div class="refresh-dot"></div><span>Live</span></div>
+
+<script>
+const MILESTONE_TILES = [64, 128, 256, 512, 1024, 2048];
+const AGENT_COLORS = {
+  'claude-code': '#6c72ff',
+  'codex': '#34d399',
+  'gemini': '#fbbf24',
+  'local-cli': '#f472b6',
+};
+
+function fmt(n) { return n.toLocaleString(); }
+
+function drawScoreChart(canvas, history, agentColor) {
+  if (!history || history.length < 2) {
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.offsetWidth * 2; canvas.height = 160;
+    ctx.scale(2, 2);
+    ctx.fillStyle = '#4a4e63'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('Waiting for data...', canvas.width/4, 40);
+    return;
+  }
+  const w = canvas.offsetWidth, h = 80;
+  canvas.width = w * 2; canvas.height = h * 2;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(2, 2);
+
+  const scores = history.map(g => g.score);
+  const maxS = Math.max(...scores, 1);
+  const pad = {l:28, r:4, t:4, b:14};
+  const cw = w - pad.l - pad.r, ch = h - pad.t - pad.b;
+
+  // Grid lines
+  ctx.strokeStyle = '#2a2e3d'; ctx.lineWidth = 0.5;
+  for (let i = 0; i <= 3; i++) {
+    const y = pad.t + (ch / 3) * i;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+    ctx.fillStyle = '#6b7089'; ctx.font = '7px monospace'; ctx.textAlign = 'right';
+    ctx.fillText(fmt(Math.round(maxS * (1 - i/3))), pad.l - 3, y + 3);
+  }
+
+  // Moving average (window 5)
+  const windowSize = Math.min(5, Math.floor(scores.length / 2)) || 1;
+  const ma = [];
+  for (let i = 0; i < scores.length; i++) {
+    const start = Math.max(0, i - windowSize + 1);
+    const slice = scores.slice(start, i + 1);
+    ma.push(slice.reduce((a,b)=>a+b,0) / slice.length);
+  }
+
+  // Draw MA line (thick, semi-transparent)
+  if (ma.length >= 2) {
+    ctx.strokeStyle = agentColor + '40'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (let i = 0; i < ma.length; i++) {
+      const x = pad.l + (i / (scores.length - 1)) * cw;
+      const y = pad.t + ch - (ma[i] / maxS) * ch;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+
+  // Score line
+  ctx.strokeStyle = agentColor; ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  for (let i = 0; i < scores.length; i++) {
+    const x = pad.l + (i / (scores.length - 1)) * cw;
+    const y = pad.t + ch - (scores[i] / maxS) * ch;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // Win/loss dots
+  for (let i = 0; i < history.length; i++) {
+    const x = pad.l + (i / (scores.length - 1)) * cw;
+    const y = pad.t + ch - (scores[i] / maxS) * ch;
+    ctx.fillStyle = history[i].result === 'win' ? '#34d399' : '#f8717180';
+    ctx.beginPath(); ctx.arc(x, y, history[i].result === 'win' ? 3 : 1.5, 0, Math.PI*2); ctx.fill();
+  }
+
+  // X axis label
+  ctx.fillStyle = '#6b7089'; ctx.font = '7px monospace'; ctx.textAlign = 'center';
+  ctx.fillText(`Game 1`, pad.l, h - 1);
+  ctx.fillText(`${scores.length}`, w - pad.r, h - 1);
+}
+
+function buildTileDistHtml(dist) {
+  if (!dist || Object.keys(dist).length === 0) return '<div style="color:#4a4e63;font-size:0.55rem;text-align:center;padding:8px">No data</div>';
+  const tiles = [64, 128, 256, 512, 1024, 2048];
+  const counts = tiles.map(t => dist[t] || 0);
+  const max = Math.max(...counts, 1);
+  const colors = ['#3b82f6','#8b5cf6','#a855f7','#d946ef','#fb923c','#34d399'];
+  return `<div class="tile-dist" style="margin-bottom:16px">${tiles.map((t,i) => {
+    const h = Math.max(2, (counts[i]/max)*36);
+    return `<div class="tile-bar" style="height:${h}px;background:${colors[i]}">
+      ${counts[i]>0?`<span class="tile-bar-count">${counts[i]}</span>`:''}
+      <span class="tile-bar-label">${t}</span>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function buildMilestonesHtml(highest) {
+  return MILESTONE_TILES.map((tile,i) => {
+    const reached = highest >= tile;
+    const conn = i < MILESTONE_TILES.length-1
+      ? `<div class="milestone-connector${highest>=MILESTONE_TILES[i+1]?' reached':''}"></div>` : '';
+    return `<div class="milestone milestone-${tile}${reached?' reached':''}">${tile}</div>${conn}`;
+  }).join('');
+}
+
+function formatElapsed(first, last, server) {
+  if (!first) return '--:--';
+  const start = new Date(first).getTime();
+  const end = last ? new Date(last).getTime() : new Date(server).getTime();
+  let d = Math.max(0, Math.floor((end-start)/1000));
+  const h=Math.floor(d/3600); d%=3600; const m=Math.floor(d/60); const s=d%60;
+  if (h>0) return `${h}h${String(m).padStart(2,'0')}m`;
+  return `${m}m${String(s).padStart(2,'0')}s`;
+}
+
+function trendArrow(avg, recent) {
+  if (!avg || !recent) return '';
+  const diff = recent - avg;
+  const pct = avg > 0 ? Math.round((diff / avg) * 100) : 0;
+  if (Math.abs(pct) < 3) return '';
+  return diff > 0
+    ? `<span style="color:var(--green);font-size:0.55rem"> +${pct}%</span>`
+    : `<span style="color:var(--red);font-size:0.55rem"> ${pct}%</span>`;
+}
+
+function buildLeaderboard(agents) {
+  const sorted = [...agents].sort((a,b) => (b.bestScore||0) - (a.bestScore||0));
+  return sorted.map((a, i) => {
+    const rank = i + 1;
+    const color = AGENT_COLORS[a.id] || '#6c72ff';
+    const wr = a.games > 0 ? `${Math.round((a.winRate||0)*100)}%` : '-';
+    return `<div class="lb-chip" style="border-color:${color}40">
+      <div class="lb-rank lb-rank-${rank}">${rank}</div>
+      <span class="lb-name" style="color:${color}">${a.name}</span>
+      <span class="lb-score">${fmt(a.bestScore||0)}</span>
+      <span class="lb-winrate">WR ${wr}</span>
+      <span style="font-size:0.6rem;color:var(--text-dim)">${a.games||0}G</span>
+      <span style="font-size:0.55rem;color:var(--purple)">${a.gamesPerSec||0} g/s</span>
+    </div>`;
+  }).join('');
+}
+
+function buildAgentColumn(agent, serverTime) {
+  const color = AGENT_COLORS[agent.id] || '#6c72ff';
+  const elapsed = formatElapsed(agent.firstTimestamp, agent.lastTimestamp, serverTime);
+  const wr = agent.games > 0 ? `${Math.round((agent.winRate||0)*100)}%` : '-';
+  const trend = trendArrow(agent.avgScore, agent.recentAvgScore);
+  const speed = agent.gamesPerSec ? `${agent.gamesPerSec} g/s` : '-';
+  return `
+  <div class="agent-col" data-agent="${agent.id}">
+    <div class="score-card status-${agent.status}">
+      <div class="sc-header">
+        <span class="sc-name" style="color:${color}">${agent.name}</span>
+        <span class="sc-port">:${agent.port}</span>
+        <span class="sc-algo">Headless</span>
+        <div class="badge badge-${agent.status}"><div class="pulse-dot"></div>${agent.status === 'playing' ? 'Running' : 'Waiting'}</div>
+      </div>
+      <div class="rl-metrics">
+        <div class="rl-metric"><div class="rl-metric-label">Best Score</div><div class="rl-metric-value score">${fmt(agent.bestScore||0)}</div></div>
+        <div class="rl-metric"><div class="rl-metric-label">Win Rate</div><div class="rl-metric-value winrate">${wr}</div></div>
+        <div class="rl-metric"><div class="rl-metric-label">Games</div><div class="rl-metric-value games">${agent.games||0}</div></div>
+        <div class="rl-metric"><div class="rl-metric-label">Best Tile</div><div class="rl-metric-value tile">${agent.bestHighest||'-'}</div></div>
+        <div class="rl-metric"><div class="rl-metric-label">Avg Score</div><div class="rl-metric-value score">${fmt(agent.avgScore||0)}${trend}</div></div>
+        <div class="rl-metric"><div class="rl-metric-label">Elapsed</div><div class="rl-metric-value" style="color:var(--accent);font-size:0.8rem">${elapsed}</div></div>
+        <div class="rl-metric"><div class="rl-metric-label">Games/sec</div><div class="rl-metric-value speed">${speed}</div></div>
+        <div class="rl-metric"><div class="rl-metric-label">Algorithm</div><div class="rl-metric-value" style="color:var(--purple);font-size:0.65rem">Expectimax</div></div>
+      </div>
+      <div class="milestones">${buildMilestonesHtml(agent.highest||0)}</div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title">Score Learning Curve</div>
+      <canvas id="chart-${agent.id}"></canvas>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title">Highest Tile Distribution</div>
+      <div id="dist-${agent.id}">${buildTileDistHtml(agent.tileDistribution)}</div>
+    </div>
+  </div>`;
+}
+
+let initialized = false;
+
+async function refresh() {
+  try {
+    const res = await fetch('/api/status');
+    const data = await res.json();
+    const lb = document.getElementById('leaderboard');
+    const grid = document.getElementById('main-grid');
+
+    lb.innerHTML = buildLeaderboard(data.agents);
+
+    if (!initialized) {
+      grid.innerHTML = data.agents.map(a => buildAgentColumn(a, data.serverTime)).join('');
+      initialized = true;
+    } else {
+      data.agents.forEach(agent => {
+        const col = grid.querySelector(`[data-agent="${agent.id}"]`);
+        if (!col) return;
+        const card = col.querySelector('.score-card');
+        if (card) {
+          card.className = `score-card status-${agent.status}`;
+          const vals = card.querySelectorAll('.rl-metric-value');
+          const wr = agent.games > 0 ? `${Math.round((agent.winRate||0)*100)}%` : '-';
+          const trend = trendArrow(agent.avgScore, agent.recentAvgScore);
+          const elapsed = formatElapsed(agent.firstTimestamp, agent.lastTimestamp, data.serverTime);
+          const speed = agent.gamesPerSec ? `${agent.gamesPerSec} g/s` : '-';
+          if (vals[0]) vals[0].textContent = fmt(agent.bestScore||0);
+          if (vals[1]) vals[1].textContent = wr;
+          if (vals[2]) vals[2].textContent = agent.games||0;
+          if (vals[3]) vals[3].textContent = agent.bestHighest||'-';
+          if (vals[4]) vals[4].innerHTML = `${fmt(agent.avgScore||0)}${trend}`;
+          if (vals[5]) vals[5].textContent = elapsed;
+          if (vals[6]) vals[6].textContent = speed;
+          // vals[7] is Algorithm, static
+          const ms = card.querySelector('.milestones');
+          if (ms) ms.innerHTML = buildMilestonesHtml(agent.highest||0);
+        }
+        const distEl = document.getElementById(`dist-${agent.id}`);
+        if (distEl) distEl.innerHTML = buildTileDistHtml(agent.tileDistribution);
+      });
+    }
+
+    // Draw charts
+    data.agents.forEach(agent => {
+      const chartCanvas = document.getElementById(`chart-${agent.id}`);
+      if (chartCanvas) drawScoreChart(chartCanvas, agent.gameHistory, AGENT_COLORS[agent.id] || '#6c72ff');
+    });
+
+    document.getElementById('server-time').textContent = new Date(data.serverTime).toLocaleTimeString();
+  } catch (err) { console.error('Fetch error:', err); }
+}
+
+refresh();
+setInterval(refresh, 1000);
+</script>
+</body>
+</html>

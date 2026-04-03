@@ -3,5 +3,6 @@ dist/
 runs/
 benchmark/_frames/
 benchmark/results/
+ai/results/
 *.local
 .DS_Store

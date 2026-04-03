@@ -80,7 +80,7 @@ for entry in "${AGENTS[@]}"; do
   PLAY_FILE="$RUNS_DIR/$NAME/benchmark/play.mjs"
 
   cat > "$PLAY_FILE" << 'PLAY_EOF'
-import { chromium } from 'playwright';
+import { chromium } from 'playwright-core';
 import fs from 'fs';
 import path from 'path';
 
@@ -308,12 +308,11 @@ done
 # ── 3. Playwright ブラウザのインストール確認 ──
 echo ""
 echo "Playwright ブラウザを確認中..."
-CHROMIUM_PATH=$(node -e "
-const { chromium } = require('playwright');
-console.log(chromium.executablePath());
-" 2>/dev/null || true)
-
-if [ -n "$CHROMIUM_PATH" ] && [ -f "$CHROMIUM_PATH" ]; then
+# playwright の browserType.executablePath() はESMなので、
+# npx playwright install --dry-run の代わりに直接パスを探す
+PW_CACHE="$HOME/Library/Caches/ms-playwright"
+CHROMIUM_DIR=$(ls -d "$PW_CACHE"/chromium-*/chrome-mac-arm64 2>/dev/null | tail -1)
+if [ -n "$CHROMIUM_DIR" ] && ls "$CHROMIUM_DIR"/*.app >/dev/null 2>&1; then
   echo "  Chromium: インストール済み ✓"
 else
   echo "  Chromium: 未インストール。ダウンロード中..."

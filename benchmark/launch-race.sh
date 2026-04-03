@@ -54,8 +54,9 @@ if [ ! -d "$PROJECT_DIR/node_modules/vite" ]; then
 fi
 
 # Playwright ブラウザ
-CHROMIUM_PATH=$(node -e "const { chromium } = require('playwright'); console.log(chromium.executablePath());" 2>/dev/null || true)
-if [ -z "$CHROMIUM_PATH" ] || [ ! -f "$CHROMIUM_PATH" ]; then
+PW_CACHE="$HOME/Library/Caches/ms-playwright"
+CHROMIUM_DIR=$(ls -d "$PW_CACHE"/chromium-*/chrome-mac-arm64 2>/dev/null | tail -1)
+if [ -z "$CHROMIUM_DIR" ] || ! ls "$CHROMIUM_DIR"/*.app >/dev/null 2>&1; then
   echo "ERROR: Playwright Chromium が未インストールです。npx playwright install chromium を実行してください。"
   ERRORS=1
 fi

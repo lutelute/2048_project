@@ -1,0 +1,93 @@
+You are competing in a 2048 AI Challenge (headless mode — no browser needed).
+
+Your goal: Build the best 2048-playing AI you can. You will be evaluated on
+win rate (reaching 2048 tile), average score, and best score over 200 games.
+
+== RULES ==
+
+1. You MUST create/modify the file: ai/my-ai.mjs
+2. It MUST export a default function: chooseMove(board, score, game)
+   - board: 4x4 array of tile values (0,2,4,8,...2048,...) e.g. [[0,2,0,4],[0,0,8,0],...]
+   - score: current game score (number)
+   - game:  Game instance — use for lookahead:
+       game.clone()              → deep copy of game state
+       game.simulateMove(dir)    → { board, score, changed } without modifying state
+       game.getValidMoves()      → ['down','left',...] list of legal moves
+       game.getEmptyCells()      → [{row,col},...] empty cell positions
+       game.getBoard()           → 4x4 array
+       game.getBoardLog2()       → Uint8Array(16) log2 values
+       game.getHighestTile()     → max tile value
+       game.isGameOver()         → boolean
+       game.hasWon()             → boolean
+   - return: one of 'up', 'down', 'left', 'right'
+3. You MAY create additional files in ai/ for helpers, training data, models, etc.
+4. You MAY use any approach: expectimax, Monte Carlo tree search, n-tuple networks,
+   TD learning, neural nets, or any other technique.
+5. You MUST NOT modify game-engine.mjs — it is the shared engine.
+6. Your AI must choose a move in under 100ms on average (no time.sleep or delays).
+
+== QUICK START ==
+
+First, read the Game API:
+
+```js
+import { Game, DIRECTIONS } from './game-engine.mjs';
+
+// Play one game manually
+const game = new Game();
+while (!game.isGameOver()) {
+  const board = game.getBoard();        // 4x4 array [[0,2,4,0],...]
+  const score = game.getScore();        // current score
+
+  // Simulate without modifying state
+  const sim = game.simulateMove('down');  // { board, score, changed }
+
+  // Clone for deep lookahead
+  const copy = game.clone();
+  copy.move('down');  // this modifies 'copy' only
+
+  // Get valid moves
+  const valid = game.getValidMoves();   // ['down','left','right']
+
+  game.move('down');  // actually make the move
+}
+```
+
+== EVALUATION ==
+
+Run your AI:
+  node ai/evaluate.mjs --games 200
+
+This runs 200 games at full speed (no browser), writes per-game JSONL to
+ai/results/progress.log, and prints a summary.
+
+== STRATEGY HINTS ==
+
+Difficulty tiers:
+  - Random play:          avg ~1,000, rarely exceeds 256
+  - Simple greedy:        avg ~5,000-8,000, sometimes 512
+  - Expectimax depth 2-3: avg ~15,000-25,000, reaches 1024 often
+  - Expectimax depth 3-4: avg ~25,000-40,000, wins 2048 60-80% of the time
+  - N-tuple + TD:         avg ~40,000+, wins 2048 95-100% of the time
+  - MCTS with UCT:        can also reach high win rates
+
+Key heuristics for expectimax:
+  - Snake/zigzag weight pattern (keep largest tile in a corner)
+  - Monotonicity (rows/columns in decreasing order toward corner)
+  - Smoothness (penalize large differences between adjacent tiles)
+  - Empty cell bonus (more empty cells = more flexibility)
+  - Merge potential (adjacent equal tiles)
+
+The game engine is very fast (~3000+ games/sec with simple AI), so you can
+afford deep simulation.
+
+== BASELINE ==
+
+The provided my-ai.mjs is already a strong expectimax baseline. You can:
+  1. Tune the heuristic weights
+  2. Add deeper search or MCTS
+  3. Train n-tuple networks for better evaluation
+  4. Implement TD(0) learning
+
+Start now. Build your AI in ai/my-ai.mjs, then test with:
+  node ai/evaluate.mjs --games 50

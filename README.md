@@ -93,23 +93,28 @@ When an agent finishes:
 
 ### 3. Multi-agent race mode
 
-For running multiple agents side-by-side with a real-time dashboard:
+Run 4 AI agents side-by-side with a real-time dashboard. Each agent plays the game in its own browser window using a heuristic AI, and results are streamed to a live dashboard.
 
 ```bash
-# Setup (one time): clone repos, symlink node_modules, install Playwright
+# 1. Setup (one time only)
+#    - Clones the repo into runs/{agent} directories
+#    - Symlinks node_modules from the main project (no per-agent npm install)
+#    - Deploys play.mjs with correct port for each agent
+#    - Checks/installs Playwright Chromium
 ./benchmark/setup-race.sh
 
-# Launch race (default: 100 games per agent)
-./benchmark/launch-race.sh
+# 2. Launch race
+./benchmark/launch-race.sh          # 100 games (default)
+./benchmark/launch-race.sh 10       # 10 games
+./benchmark/launch-race.sh 50       # 50 games
 
-# Or specify game count
-./benchmark/launch-race.sh 50
-
-# Stop all running processes
+# 3. Stop all processes
 ./benchmark/stop-race.sh
 ```
 
-Dashboard: `http://localhost:4000`
+After `launch-race.sh`, 4 browser windows open automatically and the dashboard is available at `http://localhost:4000`.
+
+You can repeat `stop-race.sh` → `launch-race.sh` as many times as needed — it cleans up previous processes automatically.
 
 | Port | Agent |
 |------|-------|
@@ -118,6 +123,37 @@ Dashboard: `http://localhost:4000`
 | 4002 | Codex |
 | 4003 | Gemini CLI |
 | 4004 | Local CLI |
+
+> **Note**: Requires Node.js 20+ and macOS. On Node 24, `playwright-core` is used instead of `playwright` to avoid an ESM import hang.
+
+### 4. AI Challenge mode (5000番台)
+
+Each AI agent writes its own `chooseMove` function using any strategy (heuristics, Monte Carlo, reinforcement learning, etc.) and competes headlessly at thousands of games per second.
+
+```bash
+# 1. Setup (one time) — deploys game engine + baseline AI to each agent
+./ai/setup-ai-race.sh
+
+# 2. Launch evaluation
+./ai/launch-ai-race.sh           # 200 games (default)
+./ai/launch-ai-race.sh 500       # 500 games
+
+# 3. Stop
+./ai/stop-ai-race.sh
+```
+
+Dashboard: `http://localhost:5050` — shows avg/max score, win rate, tile distribution, and score trend charts for each agent.
+
+Each agent implements `ai/my-ai.mjs` exporting:
+
+```js
+export default function chooseMove(board, score, game) {
+  // board: 4x4 array, game: Game object with .simulateMove(), .clone(), etc.
+  return 'down'; // 'up' | 'down' | 'left' | 'right'
+}
+```
+
+See [`ai/challenge-prompt.txt`](ai/challenge-prompt.txt) for full rules and strategy hints.
 
 ---
 
@@ -203,13 +239,86 @@ benchmark/
   setup-race.sh   # Multi-agent race setup (clone, symlink, Playwright)
   launch-race.sh  # Race launcher (servers + agents + dashboard)
   stop-race.sh    # Stop all race processes
-  race-demo.sh    # Demo mode with AI CLI agents
   watch.sh        # Real-time log monitor
   capture-demo.mjs # Demo GIF generation
   assets/         # demo.gif, hero.png
   results/        # Agent output (progress.log, final.png) — gitignored
+ai/
+  game-engine.mjs       # Headless 2048 engine
+  evaluate.mjs          # AI evaluation runner
+  my-ai.mjs             # Baseline AI (expectimax) — agents replace this
+  challenge-prompt.txt  # Challenge rules for AI agents
+  dashboard-ai-server.mjs # Dashboard server (:5050)
+  dashboard-ai.html     # Dashboard UI
+  setup-ai-race.sh      # AI challenge setup
+  launch-ai-race.sh     # AI challenge launcher
+  stop-ai-race.sh       # AI challenge stop
 runs/             # Per-agent cloned repos — gitignored
 ```
+
+---
+
+## Architecture: Three Tiers
+
+This project has three tiers of AI benchmarking, each progressively harder:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  4000番台 — Browser Race (Demo)                              │
+│  AI plays via Playwright (screenshot → arrow keys)          │
+│  Tests: perception, browser automation, persistence         │
+│  Ports: 4000-4004  |  Dashboard: localhost:4000             │
+├─────────────────────────────────────────────────────────────┤
+│  5000番台 — Headless Challenge (Showcase)                    │
+│  Preset expectimax AI runs headlessly at high speed         │
+│  Tests: heuristic quality, search depth, speed              │
+│  Ports: 5050  |  Dashboard: localhost:5050                  │
+├─────────────────────────────────────────────────────────────┤
+│  6000番台 — AI Self-Improve (Coming Soon)                    │
+│  AI agents design & train their own algorithms from scratch │
+│  Orchestrator (Claude) narrates progress in real time       │
+│  Tests: algorithm design, learning, iteration speed         │
+│  Ports: 6000-6004  |  Dashboard: localhost:6000             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 5. AI Self-Improve mode (6000番台) — *Coming Soon*
+
+The ultimate benchmark: each AI coding agent (Claude Code, Codex, Gemini CLI, etc.) receives only the game engine API and a goal — **design, implement, and iteratively improve a 2048 AI from scratch**.
+
+**How it works:**
+
+1. Each agent gets `ai/game-engine.mjs` (the Game API) and a unified instruction prompt
+2. The agent must **independently** choose an algorithm (heuristics, expectimax, MCTS, TD learning, N-tuple networks, etc.)
+3. The agent implements `chooseMove()`, runs evaluation, reads the results, and **self-improves** in a loop
+4. An **orchestrator** (the main Claude session) watches the dashboard and provides **real-time commentary**:
+   - "Codex just switched from greedy to expectimax — win rate jumped from 5% to 35%"
+   - "Gemini is trying Monte Carlo rollouts but the speed dropped to 0.5 games/sec"
+   - "Claude Code added a transposition table — cache hit rate is 40%"
+
+**What makes this different from 5000番台:**
+
+| | 5000番台 | 6000番台 |
+|---|---|---|
+| AI source | Pre-written baseline | Agent writes from scratch |
+| Iteration | Single evaluation | Design → evaluate → improve loop |
+| Learning | None (static heuristic) | Agent discovers algorithms autonomously |
+| Narration | Dashboard only | Live commentary from orchestrator |
+| Goal | Showcase results | Observe the *process* of AI development |
+
+**Evaluation criteria:**
+
+| Metric | Description |
+|---|---|
+| Final win rate | How reliably the agent's AI reaches 2048 |
+| Iteration speed | How fast the agent improves (win rate over time) |
+| Algorithm sophistication | Depth of the approach (heuristic → search → learning) |
+| Code quality | Readability and correctness of the agent's implementation |
+| Self-diagnosis | Can the agent identify why it's losing and fix it? |
+
+**Target:** Each agent should reach >80% win rate through self-improvement, starting from zero.
+
+**Status:** Design phase. Implementation planned for a future session.
 
 ---
 
