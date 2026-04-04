@@ -276,27 +276,42 @@ This project has three tiers of AI benchmarking, each progressively harder:
 │  Tests: heuristic quality, search depth, speed              │
 │  Ports: 5050  |  Dashboard: localhost:5050                  │
 ├─────────────────────────────────────────────────────────────┤
-│  6000番台 — AI Self-Improve (Coming Soon)                    │
+│  6000番台 — AI Self-Improve                                  │
 │  AI agents design & train their own algorithms from scratch │
-│  Orchestrator (Claude) narrates progress in real time       │
+│  Orchestrator monitors + intervenes on stalls               │
 │  Tests: algorithm design, learning, iteration speed         │
-│  Ports: 6000-6004  |  Dashboard: localhost:6000             │
+│  Port: 6050  |  Dashboard: localhost:6050                   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 5. AI Self-Improve mode (6000番台) — *Coming Soon*
+### 5. AI Self-Improve mode (6000番台)
 
-The ultimate benchmark: each AI coding agent (Claude Code, Codex, Gemini CLI, etc.) receives only the game engine API and a goal — **design, implement, and iteratively improve a 2048 AI from scratch**.
+The ultimate benchmark: each AI coding agent (Claude Code, Codex, Gemini CLI, [Local CLI](https://github.com/lutelute/local-cli)) receives only the game engine API and a goal — **design, implement, and iteratively improve a 2048 AI from scratch**.
+
+```bash
+# 1. Setup (resets all agents to random baseline)
+./ai/self-improve/setup.sh
+
+# 2. Launch race (opens terminal per agent + dashboard)
+./ai/self-improve/launch.sh
+
+# 3. Stop (dashboard only — close agent terminals manually)
+./ai/self-improve/stop.sh
+```
+
+Dashboard: `http://localhost:6050` — same visualization as 5000-series (score charts, tile distribution, mini board).
+
+> **Note**: Setup and execution are driven by AI agents. Because agent behavior is non-deterministic, exact results and execution flow may vary between runs. The orchestrator (you or Claude) monitors the dashboard and intervenes only when an agent stalls or fails to start — the actual AI improvement work is done by each agent independently.
 
 **How it works:**
 
 1. Each agent gets `ai/game-engine.mjs` (the Game API) and a unified instruction prompt
 2. The agent must **independently** choose an algorithm (heuristics, expectimax, MCTS, TD learning, N-tuple networks, etc.)
 3. The agent implements `chooseMove()`, runs evaluation, reads the results, and **self-improves** in a loop
-4. An **orchestrator** (the main Claude session) watches the dashboard and provides **real-time commentary**:
-   - "Codex just switched from greedy to expectimax — win rate jumped from 5% to 35%"
-   - "Gemini is trying Monte Carlo rollouts but the speed dropped to 0.5 games/sec"
-   - "Claude Code added a transposition table — cache hit rate is 40%"
+4. An **orchestrator** watches the dashboard and intervenes when agents stall:
+   - Re-inputs the prompt if an agent hasn't started
+   - Nudges stuck agents to continue their improvement loop
+   - Does NOT write AI code — that's each agent's job
 
 **What makes this different from 5000番台:**
 
@@ -305,8 +320,12 @@ The ultimate benchmark: each AI coding agent (Claude Code, Codex, Gemini CLI, et
 | AI source | Pre-written baseline | Agent writes from scratch |
 | Iteration | Single evaluation | Design → evaluate → improve loop |
 | Learning | None (static heuristic) | Agent discovers algorithms autonomously |
-| Narration | Dashboard only | Live commentary from orchestrator |
+| Orchestrator | None | Monitors + intervenes on stalls |
 | Goal | Showcase results | Observe the *process* of AI development |
+
+| Port | Usage |
+|------|-------|
+| 6050 | Dashboard |
 
 **Evaluation criteria:**
 
@@ -319,8 +338,6 @@ The ultimate benchmark: each AI coding agent (Claude Code, Codex, Gemini CLI, et
 | Self-diagnosis | Can the agent identify why it's losing and fix it? |
 
 **Target:** Each agent should reach >80% win rate through self-improvement, starting from zero.
-
-**Status:** Design phase. Implementation planned for a future session.
 
 ---
 

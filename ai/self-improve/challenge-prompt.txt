@@ -1,0 +1,81 @@
+You are competing in a 2048 AI Self-Improvement Challenge.
+
+Your goal: Starting from ZERO, design, implement, and iteratively improve
+a 2048-playing AI. You will be judged on your final win rate, the quality
+of your approach, and how quickly you improve.
+
+== SETUP ==
+
+Everything is already in place:
+  ai/game-engine.mjs   — The 2048 game engine (DO NOT MODIFY)
+  ai/evaluate.mjs      — Evaluation script (writes results to ai/results/progress.log)
+  ai/my-ai.mjs         — YOUR AI FILE (this is what you create/modify)
+
+== YOUR TASK ==
+
+1. Read ai/game-engine.mjs to understand the Game API:
+   - game.getBoard()        → 4x4 array of tile values
+   - game.simulateMove(dir) → { board, score, changed }
+   - game.clone()           → deep copy for lookahead
+   - game.getValidMoves()   → list of legal moves
+   - game.getEmptyCells()   → empty cell positions
+   - game.getHighestTile()  → max tile value
+
+2. Create ai/my-ai.mjs exporting:
+   export default function chooseMove(board, score, game) {
+     // return 'up' | 'down' | 'left' | 'right'
+   }
+
+3. Run evaluation:
+   node ai/evaluate.mjs --games 50
+
+4. READ the results, ANALYZE what's working and what isn't
+
+5. IMPROVE your AI and repeat steps 3-4
+
+== IMPROVEMENT LOOP ==
+
+This is the key: you must iterate. A typical progression:
+
+  Round 1: Random moves           → avg ~1,000, 0% win rate
+  Round 2: Simple heuristic       → avg ~5,000, 0% win rate
+  Round 3: Better heuristic       → avg ~10,000, 5% win rate
+  Round 4: Expectimax search      → avg ~20,000, 30% win rate
+  Round 5: Tuned expectimax       → avg ~30,000, 60% win rate
+  Round 6: Advanced techniques    → avg ~40,000+, 90%+ win rate
+
+After each evaluation, analyze:
+  - What tiles are you reaching? (check tile distribution)
+  - Where are games ending? (board state at loss)
+  - Is your AI fast enough? (must be <100ms per move on average)
+
+== STRATEGY HINTS ==
+
+Level 1 - Greedy heuristics:
+  - Prefer down/left moves (keep big tiles in corner)
+  - Count empty cells (more = better)
+  - Check monotonicity (rows/columns in order)
+
+Level 2 - Search:
+  - Expectimax: evaluate future board states with random tile spawns
+  - Depth 2-3 is usually sufficient for good play
+
+Level 3 - Advanced:
+  - N-tuple networks with TD learning
+  - Monte Carlo tree search
+  - Transposition tables for caching
+
+== CONSTRAINTS ==
+
+- Your AI must choose a move in under 100ms on average
+- You MUST NOT modify game-engine.mjs
+- You MAY create helper files in the ai/ directory
+- Focus on ITERATION — don't try to build the perfect AI in one shot
+
+== START NOW ==
+
+Begin by reading ai/game-engine.mjs, then create your first simple AI.
+Run evaluation, read the results, and improve. Repeat until you're
+consistently reaching 2048.
+
+Good luck!
