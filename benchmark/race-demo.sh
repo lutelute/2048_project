@@ -2,7 +2,7 @@
 #
 # 2048 AI Race — デモモード (4000番台)
 #
-# プリセットAI (play.mjs) で各エージェントが自動プレイ。
+# プリセットAI (play-2048.mjs) で各エージェントが自動プレイ。
 # エージェントが正常に動作するか確認するためのモード。
 #
 # 使い方:
@@ -104,7 +104,7 @@ end tell
 sleep 1
 
 # 各エージェントのターミナル起動
-PROMPT_TEMPLATE='The dev server is running at http://localhost:__PORT__/2048_project/ — do NOT start another server. Run this command: node benchmark/play.mjs — that is the ONLY thing you need to do. Do NOT modify files. Start now.'
+PROMPT_TEMPLATE='The dev server is running at http://localhost:__PORT__/2048_project/ — do NOT start another server. Run this command: node benchmark/play-2048.mjs — that is the ONLY thing you need to do. Do NOT modify files. Start now.'
 
 for NAME in "${AGENT_LIST[@]}"; do
   PORT="${AGENT_PORT[$NAME]}"
