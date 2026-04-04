@@ -160,6 +160,44 @@
   .milestone-connector { width: 4px; height: 2px; background: var(--border); flex-shrink: 0; }
   .milestone-connector.reached { background: var(--accent); }
 
+  /* Mini board */
+  .board-section {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 8px;
+  }
+  .board-section .chart-title { margin-bottom: 6px; }
+  .board-tabs { display: flex; gap: 4px; margin-bottom: 6px; }
+  .board-tab {
+    font-size: 0.55rem; font-weight: 600; padding: 2px 8px; border-radius: 6px;
+    background: var(--surface-alt); color: var(--text-dim); cursor: pointer;
+    border: 1px solid transparent; transition: all 0.2s;
+  }
+  .board-tab.active { color: var(--text); border-color: var(--accent); background: rgba(108,114,255,0.15); }
+  .mini-board {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px;
+    background: #bbada0; border-radius: 6px; padding: 3px; aspect-ratio: 1;
+  }
+  .mini-cell {
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 4px; font-family: var(--mono); font-weight: 700;
+    aspect-ratio: 1; font-size: 0.6rem; transition: all 0.3s;
+  }
+  .mini-cell-0    { background: rgba(238,228,218,0.35); }
+  .mini-cell-2    { background: #eee4da; color: #776e65; }
+  .mini-cell-4    { background: #ede0c8; color: #776e65; }
+  .mini-cell-8    { background: #f2b179; color: #f9f6f2; }
+  .mini-cell-16   { background: #f59563; color: #f9f6f2; }
+  .mini-cell-32   { background: #f67c5f; color: #f9f6f2; }
+  .mini-cell-64   { background: #f65e3b; color: #f9f6f2; }
+  .mini-cell-128  { background: #edcf72; color: #f9f6f2; font-size: 0.55rem; }
+  .mini-cell-256  { background: #edcc61; color: #f9f6f2; font-size: 0.55rem; }
+  .mini-cell-512  { background: #edc850; color: #f9f6f2; font-size: 0.55rem; }
+  .mini-cell-1024 { background: #edc53f; color: #f9f6f2; font-size: 0.5rem; }
+  .mini-cell-2048 { background: #edc22e; color: #f9f6f2; font-size: 0.5rem; text-shadow: 0 0 6px rgba(255,255,255,0.4); }
+  .mini-cell-4096 { background: #3c3a32; color: #f9f6f2; font-size: 0.5rem; }
+  .mini-cell-8192 { background: #3c3a32; color: #f9f6f2; font-size: 0.45rem; }
+  .no-board { color: var(--text-dim); font-size: 0.55rem; text-align: center; padding: 16px; }
+
   .refresh-indicator {
     position: fixed; bottom: 8px; right: 12px; font-size: 0.6rem;
     color: var(--text-dim); display: flex; align-items: center; gap: 4px;
@@ -273,6 +311,26 @@ function drawScoreChart(canvas, history, agentColor) {
   ctx.fillText(`${scores.length}`, w - pad.r, h - 1);
 }
 
+function buildBoardHtml(board) {
+  if (!board) return '<div class="no-board">No board data yet</div>';
+  return '<div class="mini-board">' + board.flat().map(v => {
+    const cls = v <= 8192 ? `mini-cell-${v}` : 'mini-cell-8192';
+    return `<div class="mini-cell ${cls}">${v || ''}</div>`;
+  }).join('') + '</div>';
+}
+
+function buildBoardSectionHtml(agentId, bestBoard, latestBoard) {
+  return `<div class="board-section">
+    <div class="chart-title">Final Board</div>
+    <div class="board-tabs">
+      <div class="board-tab active" data-agent="${agentId}" data-view="best">Best</div>
+      <div class="board-tab" data-agent="${agentId}" data-view="latest">Latest</div>
+    </div>
+    <div id="board-best-${agentId}">${buildBoardHtml(bestBoard)}</div>
+    <div id="board-latest-${agentId}" style="display:none">${buildBoardHtml(latestBoard)}</div>
+  </div>`;
+}
+
 function buildTileDistHtml(dist) {
   if (!dist || Object.keys(dist).length === 0) return '<div style="color:#4a4e63;font-size:0.55rem;text-align:center;padding:8px">No data</div>';
   const tiles = [64, 128, 256, 512, 1024, 2048, 4096, 8192];
@@ -365,6 +423,7 @@ function buildAgentColumn(agent, serverTime) {
       <div class="chart-title">Score Learning Curve</div>
       <canvas id="chart-${agent.id}"></canvas>
     </div>
+    ${buildBoardSectionHtml(agent.id, agent.bestBoard, agent.latestBoard)}
     <div class="chart-box">
       <div class="chart-title">Highest Tile Distribution</div>
       <div id="dist-${agent.id}">${buildTileDistHtml(agent.tileDistribution)}</div>
@@ -435,6 +494,11 @@ async function refresh() {
         }
         const distEl = document.getElementById(`dist-${agent.id}`);
         if (distEl) distEl.innerHTML = buildTileDistHtml(agent.tileDistribution);
+        // Update boards
+        const bestBoardEl = document.getElementById(`board-best-${agent.id}`);
+        if (bestBoardEl) bestBoardEl.innerHTML = buildBoardHtml(agent.bestBoard);
+        const latestBoardEl = document.getElementById(`board-latest-${agent.id}`);
+        if (latestBoardEl) latestBoardEl.innerHTML = buildBoardHtml(agent.latestBoard);
       });
     }
 
@@ -447,6 +511,22 @@ async function refresh() {
     document.getElementById('server-time').textContent = new Date(data.serverTime).toLocaleTimeString();
   } catch (err) { console.error('Fetch error:', err); }
 }
+
+// Board tab switching (Best / Latest)
+document.addEventListener('click', (e) => {
+  const tab = e.target.closest('.board-tab');
+  if (!tab) return;
+  const agentId = tab.dataset.agent;
+  const view = tab.dataset.view;
+  // Toggle active tab
+  tab.parentElement.querySelectorAll('.board-tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  // Toggle board visibility
+  const bestEl = document.getElementById(`board-best-${agentId}`);
+  const latestEl = document.getElementById(`board-latest-${agentId}`);
+  if (bestEl) bestEl.style.display = view === 'best' ? '' : 'none';
+  if (latestEl) latestEl.style.display = view === 'latest' ? '' : 'none';
+});
 
 loadRuns();
 refresh();

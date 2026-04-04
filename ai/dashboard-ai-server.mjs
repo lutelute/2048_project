@@ -91,6 +91,7 @@ function deriveStatus(entries) {
   }
 
   let totalScore = 0, bestScore = 0, bestHighest = 0, wins = 0;
+  let bestBoard = null, latestBoard = null;
   const tileDist = {};
   const gameHistory = [];
 
@@ -98,8 +99,9 @@ function deriveStatus(entries) {
     const s = e.score || 0;
     const h = e.highest || 0;
     totalScore += s;
-    if (s > bestScore) bestScore = s;
+    if (s > bestScore) { bestScore = s; if (e.board) bestBoard = e.board; }
     if (h > bestHighest) bestHighest = h;
+    if (e.board) latestBoard = e.board;
     if (e.result === 'win') wins++;
     tileDist[h] = (tileDist[h] || 0) + 1;
     gameHistory.push({
@@ -143,6 +145,8 @@ function deriveStatus(entries) {
     firstTimestamp: firstTs,
     lastTimestamp: lastTs,
     gamesPerSec: Number(gamesPerSec),
+    bestBoard,
+    latestBoard,
   };
 }
 

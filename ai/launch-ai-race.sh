@@ -54,6 +54,15 @@ pkill -f "evaluate.mjs" 2>/dev/null || true
 lsof -ti :5050 2>/dev/null | xargs kill 2>/dev/null || true
 sleep 1
 
+# ── 1.5. 過去の結果をクリア（ダッシュボードを0からスタート）──
+echo "過去の結果をクリア..."
+for NAME in "${AGENTS[@]}"; do
+  RESULTS_DIR="$RUNS_DIR/$NAME/ai/results"
+  if [ -d "$RESULTS_DIR" ]; then
+    rm -rf "$RESULTS_DIR"/run-* "$RESULTS_DIR"/progress.log "$RESULTS_DIR"/progress.jsonl "$RESULTS_DIR"/stdout.log 2>/dev/null || true
+  fi
+done
+
 # ── 2. ダッシュボードサーバー起動 ──
 echo "ダッシュボード起動中..."
 node "$SCRIPT_DIR/dashboard-ai-server.mjs" > /dev/null 2>&1 &

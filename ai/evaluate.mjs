@@ -85,6 +85,7 @@ for (let g = 0; g < numGames; g++) {
     score,
     highest,
     moves,
+    board: game.getBoard(),
     game: g + 1,
     timestamp: new Date().toISOString(),
   });

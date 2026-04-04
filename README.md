@@ -122,9 +122,11 @@ You can repeat `stop-race.sh` → `launch-race.sh` as many times as needed — i
 | 4001 | Claude Code |
 | 4002 | Codex |
 | 4003 | Gemini CLI |
-| 4004 | Local CLI |
+| 4004 | [Local CLI](https://github.com/lutelute/local-cli) |
 
 > **Note**: Requires Node.js 20+ and macOS. On Node 24, `playwright-core` is used instead of `playwright` to avoid an ESM import hang.
+>
+> **Note**: Setup and race execution are driven by AI agents (e.g. Claude Code). Because agent behavior is non-deterministic, exact results and execution flow may vary between runs.
 
 ### 4. AI Challenge mode (5000番台)
 
@@ -142,7 +144,7 @@ Each AI agent writes its own `chooseMove` function using any strategy (heuristic
 ./ai/stop-ai-race.sh
 ```
 
-Dashboard: `http://localhost:5050` — shows avg/max score, win rate, tile distribution, and score trend charts for each agent.
+Dashboard: `http://localhost:5050` — shows avg/max score, win rate, tile distribution, score trend charts, and mini board visualizations for each agent.
 
 Each agent implements `ai/my-ai.mjs` exporting:
 
