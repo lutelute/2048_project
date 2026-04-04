@@ -23,7 +23,10 @@ function getArg(name, defaultVal) {
 }
 
 const numGames = parseInt(process.env.TOTAL_GAMES || getArg('--games', '100'), 10);
-const aiPath = getArg('--ai', path.join(import.meta.dirname, 'my-ai.mjs'));
+const algoName = process.env.ALGO || getArg('--algo', '');
+const aiPath = algoName
+  ? path.join(import.meta.dirname, 'algorithms', `${algoName}.mjs`)
+  : getArg('--ai', path.join(import.meta.dirname, 'my-ai.mjs'));
 const runId = process.env.RUN_ID || new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, 19);
 const logDir = path.join(import.meta.dirname, 'results', `run-${runId}`);
 const logPath = path.join(logDir, 'progress.log');

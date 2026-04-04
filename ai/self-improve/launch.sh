@@ -93,7 +93,7 @@ fi
 echo ""
 echo "AI CLIを起動中..."
 
-ONELINER="You are in a 2048 AI Self-Improvement Challenge. Read ai/challenge-prompt.txt for full instructions. Your task: (1) Read ai/game-engine.mjs to understand the Game API, (2) Create or improve ai/my-ai.mjs, (3) Run: node ai/evaluate.mjs --games 50, (4) Read results and improve, (5) Repeat 3-4. Target: over 50 percent win rate. Start now."
+ONELINER="You are in a 2048 AI Self-Improvement Challenge. Read ai/challenge-prompt.txt for full instructions. Your mission: build a 2048 AI that achieves 100 percent win rate. You are fully autonomous — decide what to build, iterate, and do not stop until every game reaches 2048. Steps: (1) Read ai/game-engine.mjs for the API, (2) Create/improve ai/my-ai.mjs, (3) Run: node ai/evaluate.mjs --games 50, (4) Read results and improve, (5) Repeat 3-5 until 100 percent win rate. Reference algorithms in ai/algorithms/. Use all compute you can — deeper search, adaptive depth, precomputation. Start now."
 
 for entry in "${AVAILABLE_AGENTS[@]}"; do
   IFS='|' read -r NAME CLI FLAGS <<< "$entry"

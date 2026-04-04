@@ -3,8 +3,13 @@
 # 2048 AI Challenge — レース起動 (5000番台)
 #
 # 使い方:
-#   ./ai/launch-ai-race.sh              # 全エージェント (200ゲーム)
+#   ./ai/launch-ai-race.sh              # 全エージェント (200ゲーム, expectimax)
 #   ./ai/launch-ai-race.sh 500          # 評価ゲーム数を変更
+#   ./ai/launch-ai-race.sh --algo montecarlo       # 全員モンテカルロ
+#   ./ai/launch-ai-race.sh --algo all               # 4アルゴリズム対決
+#   ./ai/launch-ai-race.sh 100 --algo greedy        # 100ゲーム + greedy
+#
+# 利用可能なアルゴリズム: random, greedy, montecarlo, expectimax
 #
 # 動作:
 #   1. ダッシュボードサーバー起動 (:5050)
@@ -20,16 +25,73 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 RUNS_DIR="$PROJECT_DIR/runs"
-EVAL_GAMES="${1:-200}"
+# ── 引数パース ──
+EVAL_GAMES="200"
+ALGO=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --algo)
+      ALGO="$2"
+      shift 2
+      ;;
+    *)
+      EVAL_GAMES="$1"
+      shift
+      ;;
+  esac
+done
 
 AGENTS=("claude-code" "codex" "gemini" "local-cli")
+ALL_ALGOS=("random" "greedy" "montecarlo" "expectimax")
+
+# --algo all: 4つのアルゴリズムを4エージェントに割り当て
+if [ "$ALGO" = "all" ]; then
+  AGENT_ALGOS=("${ALL_ALGOS[@]}")
+elif [ -n "$ALGO" ]; then
+  AGENT_ALGOS=("$ALGO" "$ALGO" "$ALGO" "$ALGO")
+else
+  AGENT_ALGOS=("" "" "" "")
+fi
 
 echo "=== 2048 AI Challenge Race (5000番台) ==="
 echo "  Evaluation games: $EVAL_GAMES"
+if [ "$ALGO" = "all" ]; then
+  echo "  Algorithm: ALL (random vs greedy vs montecarlo vs expectimax)"
+elif [ -n "$ALGO" ]; then
+  echo "  Algorithm: $ALGO"
+else
+  echo "  Algorithm: default (my-ai.mjs)"
+fi
 echo "  Mode: Headless (no browser needed)"
 echo ""
 
 # ── 0. 事前チェック ──
+
+# アルゴリズム名の検証
+if [ -n "$ALGO" ] && [ "$ALGO" != "all" ]; then
+  VALID=0
+  for a in "${ALL_ALGOS[@]}"; do
+    [ "$a" = "$ALGO" ] && VALID=1
+  done
+  if [ "$VALID" -eq 0 ]; then
+    echo "ERROR: 不明なアルゴリズム '$ALGO'"
+    echo "利用可能: ${ALL_ALGOS[*]}"
+    exit 1
+  fi
+fi
+
+# アルゴリズム使用時はalgorithmsディレクトリを確認
+if [ -n "$ALGO" ]; then
+  for NAME in "${AGENTS[@]}"; do
+    if [ ! -d "$RUNS_DIR/$NAME/ai/algorithms" ]; then
+      echo "ERROR: $RUNS_DIR/$NAME/ai/algorithms/ がありません。"
+      echo "先に ./ai/setup-ai-race.sh を実行してください。"
+      exit 1
+    fi
+  done
+fi
+
 ERRORS=0
 for NAME in "${AGENTS[@]}"; do
   if [ ! -f "$RUNS_DIR/$NAME/ai/evaluate.mjs" ]; then
@@ -81,15 +143,24 @@ RUN_ID=$(date +%Y-%m-%d_%H-%M-%S)
 echo ""
 echo "評価開始 ($EVAL_GAMES ゲーム, run-$RUN_ID)..."
 PIDS=()
-for NAME in "${AGENTS[@]}"; do
+for i in "${!AGENTS[@]}"; do
+  NAME="${AGENTS[$i]}"
+  AGENT_ALGO="${AGENT_ALGOS[$i]}"
   AI_DIR="$RUNS_DIR/$NAME/ai"
   mkdir -p "$AI_DIR/results/run-$RUN_ID"
 
-  RUN_ID="$RUN_ID" TOTAL_GAMES="$EVAL_GAMES" node "$AI_DIR/evaluate.mjs" \
+  ALGO_LABEL=""
+  ALGO_ENV=""
+  if [ -n "$AGENT_ALGO" ]; then
+    ALGO_ENV="ALGO=$AGENT_ALGO"
+    ALGO_LABEL=" ($AGENT_ALGO)"
+  fi
+
+  env RUN_ID="$RUN_ID" TOTAL_GAMES="$EVAL_GAMES" $ALGO_ENV node "$AI_DIR/evaluate.mjs" \
     > "$AI_DIR/results/run-$RUN_ID/stdout.log" 2>&1 &
   PID=$!
   PIDS+=("$PID")
-  echo "  $NAME -> PID $PID"
+  echo "  $NAME$ALGO_LABEL -> PID $PID"
 done
 
 # ── 4. ブラウザでダッシュボード表示 ──
