@@ -217,6 +217,19 @@ function simulateMove(board, direction) {
   return { board: grid, mergeScore, changed };
 }
 
+async function safeEval(page, fn, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try { return await fn(page); } catch (e) {
+      if (e.message?.includes('Execution context was destroyed') || e.message?.includes('navigation')) {
+        console.log(`  [retry ${i+1}/${retries}] context destroyed, waiting for page...`);
+        await page.waitForTimeout(2000);
+        await page.waitForLoadState('networkidle').catch(() => {});
+      } else { throw e; }
+    }
+  }
+  throw new Error('safeEval: max retries exceeded');
+}
+
 async function playOneGame(page, gameNum) {
   console.log(`\n--- Game ${gameNum}/${TOTAL_GAMES} ---`);
   await page.locator('button', { hasText: /new game/i }).first().click();
@@ -227,12 +240,19 @@ async function playOneGame(page, gameNum) {
   let stuckCount = 0;
 
   while (true) {
-    const board = await readBoardState(page);
-    const score = await readScore(page);
-    const highest = Math.max(...board.flat());
-    const tileCount = board.flat().filter(v => v > 0).length;
+    let board, score, highest, tileCount, endState;
+    try {
+      board = await safeEval(page, readBoardState);
+      score = await safeEval(page, readScore);
+      highest = Math.max(...board.flat());
+      tileCount = board.flat().filter(v => v > 0).length;
+      endState = await safeEval(page, checkGameEnd);
+    } catch (e) {
+      console.log(`  [error] ${e.message} — skipping to next game`);
+      log({ result: 'error', score: 0, highest: 0, moves: moveCount, board: null, timestamp: new Date().toISOString() });
+      return;
+    }
 
-    const endState = await checkGameEnd(page);
     if (endState) {
       await page.waitForTimeout(300);
       await page.screenshot({ path: FINAL_SCREENSHOT });
@@ -249,8 +269,8 @@ async function playOneGame(page, gameNum) {
         for (const dir of ['ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowUp']) {
           await page.keyboard.press(dir);
           await page.waitForTimeout(150);
-          const nb = await readBoardState(page);
-          if (JSON.stringify(nb) !== boardStr) { escaped = true; break; }
+          const nb = await safeEval(page, readBoardState).catch(() => null);
+          if (nb && JSON.stringify(nb) !== boardStr) { escaped = true; break; }
         }
         if (!escaped) {
           await page.screenshot({ path: FINAL_SCREENSHOT });

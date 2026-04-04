@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -14,8 +14,49 @@ const AGENTS = [
   { id: 'local-cli', name: 'Local CLI (Qwen)', port: 5004 },
 ];
 
-async function readProgressLog(agentId) {
-  const logPath = join(PROJECT_ROOT, 'runs', agentId, 'ai', 'results', 'progress.log');
+async function findLatestRunDir(agentId) {
+  const resultsDir = join(PROJECT_ROOT, 'runs', agentId, 'ai', 'results');
+  try {
+    const entries = await readdir(resultsDir, { withFileTypes: true });
+    const runDirs = entries
+      .filter(e => e.isDirectory() && e.name.startsWith('run-'))
+      .map(e => e.name)
+      .sort()
+      .reverse();
+    return runDirs.length > 0 ? join(resultsDir, runDirs[0]) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function listRuns(agentId) {
+  const resultsDir = join(PROJECT_ROOT, 'runs', agentId, 'ai', 'results');
+  try {
+    const entries = await readdir(resultsDir, { withFileTypes: true });
+    return entries
+      .filter(e => e.isDirectory() && e.name.startsWith('run-'))
+      .map(e => e.name)
+      .sort()
+      .reverse();
+  } catch {
+    return [];
+  }
+}
+
+async function readProgressLog(agentId, runDir) {
+  // If a specific run dir is provided, use it; otherwise find latest
+  let logPath;
+  if (runDir) {
+    logPath = join(PROJECT_ROOT, 'runs', agentId, 'ai', 'results', runDir, 'progress.log');
+  } else {
+    const latestDir = await findLatestRunDir(agentId);
+    if (!latestDir) {
+      // Fallback: try legacy flat progress.log
+      logPath = join(PROJECT_ROOT, 'runs', agentId, 'ai', 'results', 'progress.log');
+    } else {
+      logPath = join(latestDir, 'progress.log');
+    }
+  }
   try {
     const raw = await readFile(logPath, 'utf-8');
     const lines = raw.trim().split('\n').filter(Boolean);
@@ -105,10 +146,10 @@ function deriveStatus(entries) {
   };
 }
 
-async function getFullStatus() {
+async function getFullStatus(runDir) {
   const results = [];
   for (const agent of AGENTS) {
-    const entries = await readProgressLog(agent.id);
+    const entries = await readProgressLog(agent.id, runDir);
     const state = deriveStatus(entries);
     results.push({ ...agent, ...state });
   }
@@ -118,13 +159,31 @@ async function getFullStatus() {
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
 
+  if (url.pathname === '/api/runs') {
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 'no-cache',
+    });
+    // Return union of all run dirs across agents
+    const allRuns = new Set();
+    for (const agent of AGENTS) {
+      const runs = await listRuns(agent.id);
+      runs.forEach(r => allRuns.add(r));
+    }
+    const sorted = [...allRuns].sort().reverse();
+    res.end(JSON.stringify({ runs: sorted }));
+    return;
+  }
+
   if (url.pathname === '/api/status') {
     res.writeHead(200, {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
       'Cache-Control': 'no-cache',
     });
-    const status = await getFullStatus();
+    const runDir = url.searchParams.get('run') || undefined;
+    const status = await getFullStatus(runDir);
     res.end(JSON.stringify({ agents: status, serverTime: new Date().toISOString() }));
     return;
   }

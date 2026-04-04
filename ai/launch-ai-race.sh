@@ -67,17 +67,17 @@ else
   exit 1
 fi
 
-# ── 3. 結果クリア & 評価開始 ──
+# ── 3. 評価開始 (ランごとに別フォルダ) ──
+RUN_ID=$(date +%Y-%m-%d_%H-%M-%S)
 echo ""
-echo "評価開始 ($EVAL_GAMES ゲーム)..."
+echo "評価開始 ($EVAL_GAMES ゲーム, run-$RUN_ID)..."
 PIDS=()
 for NAME in "${AGENTS[@]}"; do
   AI_DIR="$RUNS_DIR/$NAME/ai"
-  rm -f "$AI_DIR/results/progress.log"
-  mkdir -p "$AI_DIR/results"
+  mkdir -p "$AI_DIR/results/run-$RUN_ID"
 
-  TOTAL_GAMES="$EVAL_GAMES" node "$AI_DIR/evaluate.mjs" \
-    > "$AI_DIR/results/stdout.log" 2>&1 &
+  RUN_ID="$RUN_ID" TOTAL_GAMES="$EVAL_GAMES" node "$AI_DIR/evaluate.mjs" \
+    > "$AI_DIR/results/run-$RUN_ID/stdout.log" 2>&1 &
   PID=$!
   PIDS+=("$PID")
   echo "  $NAME -> PID $PID"
