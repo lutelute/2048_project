@@ -28,11 +28,16 @@ RUNS_DIR="$PROJECT_DIR/runs"
 # ── 引数パース ──
 EVAL_GAMES="200"
 ALGO=""
+ALGOS_CSV=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --algo)
       ALGO="$2"
+      shift 2
+      ;;
+    --algos)
+      ALGOS_CSV="$2"
       shift 2
       ;;
     *)
@@ -47,8 +52,13 @@ ALL_ALGOS=("random" "greedy" "montecarlo" "expectimax")
 # --algo で指定可能な全アルゴリズム (rl=N-tuple TD強化学習。all割り当ては ALL_ALGOS のみ使用)
 VALID_ALGOS=("random" "greedy" "montecarlo" "expectimax" "rl")
 
-# --algo all: 4つのアルゴリズムを4エージェントに割り当て
-if [ "$ALGO" = "all" ]; then
+# アルゴリズム割り当て:
+#   --algos a,b,c,d : 各エージェントに個別割り当て (アルゴリズム比較用)
+#   --algo all      : 既定4種 (random/greedy/montecarlo/expectimax)
+#   --algo X        : 全員 X
+if [ -n "$ALGOS_CSV" ]; then
+  IFS=',' read -ra AGENT_ALGOS <<< "$ALGOS_CSV"
+elif [ "$ALGO" = "all" ]; then
   AGENT_ALGOS=("${ALL_ALGOS[@]}")
 elif [ -n "$ALGO" ]; then
   AGENT_ALGOS=("$ALGO" "$ALGO" "$ALGO" "$ALGO")
@@ -58,7 +68,9 @@ fi
 
 echo "=== 2048 AI Challenge Race (5000番台) ==="
 echo "  Evaluation games: $EVAL_GAMES"
-if [ "$ALGO" = "all" ]; then
+if [ -n "$ALGOS_CSV" ]; then
+  echo "  Algorithms: $ALGOS_CSV (per-agent 比較)"
+elif [ "$ALGO" = "all" ]; then
   echo "  Algorithm: ALL (random vs greedy vs montecarlo vs expectimax)"
 elif [ -n "$ALGO" ]; then
   echo "  Algorithm: $ALGO"

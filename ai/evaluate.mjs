@@ -39,6 +39,13 @@ const logPath = path.join(logDir, 'progress.log');
 // Ensure results directory exists
 fs.mkdirSync(logDir, { recursive: true });
 
+// run のメタ情報 (ダッシュボードでアルゴリズム名を表示するため)
+fs.writeFileSync(path.join(logDir, 'meta.json'), JSON.stringify({
+  algo: algoName || 'my-ai',
+  games: numGames,
+  seed: baseSeed,
+}));
+
 // Load AI
 let chooseMove;
 try {

@@ -180,8 +180,8 @@
   }
   .mini-cell {
     display: flex; align-items: center; justify-content: center;
-    border-radius: 4px; font-family: var(--mono); font-weight: 700;
-    aspect-ratio: 1; font-size: 0.6rem; transition: all 0.3s;
+    border-radius: 4px; font-family: var(--mono); font-weight: 800;
+    aspect-ratio: 1; font-size: 1rem; transition: all 0.3s;
   }
   .mini-cell-0    { background: rgba(238,228,218,0.35); }
   .mini-cell-2    { background: #eee4da; color: #776e65; }
@@ -190,13 +190,13 @@
   .mini-cell-16   { background: #f59563; color: #f9f6f2; }
   .mini-cell-32   { background: #f67c5f; color: #f9f6f2; }
   .mini-cell-64   { background: #f65e3b; color: #f9f6f2; }
-  .mini-cell-128  { background: #edcf72; color: #f9f6f2; font-size: 0.55rem; }
-  .mini-cell-256  { background: #edcc61; color: #f9f6f2; font-size: 0.55rem; }
-  .mini-cell-512  { background: #edc850; color: #f9f6f2; font-size: 0.55rem; }
-  .mini-cell-1024 { background: #edc53f; color: #f9f6f2; font-size: 0.5rem; }
-  .mini-cell-2048 { background: #edc22e; color: #f9f6f2; font-size: 0.5rem; text-shadow: 0 0 6px rgba(255,255,255,0.4); }
-  .mini-cell-4096 { background: #3c3a32; color: #f9f6f2; font-size: 0.5rem; }
-  .mini-cell-8192 { background: #3c3a32; color: #f9f6f2; font-size: 0.45rem; }
+  .mini-cell-128  { background: #edcf72; color: #f9f6f2; font-size: 0.85rem; }
+  .mini-cell-256  { background: #edcc61; color: #f9f6f2; font-size: 0.85rem; }
+  .mini-cell-512  { background: #edc850; color: #f9f6f2; font-size: 0.85rem; }
+  .mini-cell-1024 { background: #edc53f; color: #f9f6f2; font-size: 0.7rem; }
+  .mini-cell-2048 { background: #edc22e; color: #f9f6f2; font-size: 0.7rem; text-shadow: 0 0 6px rgba(255,255,255,0.4); }
+  .mini-cell-4096 { background: #3c3a32; color: #f9f6f2; font-size: 0.7rem; }
+  .mini-cell-8192 { background: #3c3a32; color: #f9f6f2; font-size: 0.62rem; }
   .no-board { color: var(--text-dim); font-size: 0.55rem; text-align: center; padding: 16px; }
 
   .refresh-indicator {
@@ -244,6 +244,7 @@
       <option value="montecarlo">montecarlo</option>
       <option value="greedy">greedy</option>
       <option value="random">random</option>
+      <option value="compare">&#9876; compare (4種同時)</option>
     </select>
   </label>
   <label title="学習を初回から観察するなら 50 程度に">Delay(ms) <input id="ctl-delay" type="number" value="0" min="0" max="5000"></label>
@@ -445,7 +446,7 @@ function buildAgentColumn(agent, serverTime) {
         <div class="rl-metric"><div class="rl-metric-label">Avg Score</div><div class="rl-metric-value score">${fmt(agent.avgScore||0)}${trend}</div></div>
         <div class="rl-metric"><div class="rl-metric-label">Elapsed</div><div class="rl-metric-value" style="color:var(--accent);font-size:0.8rem">${elapsed}</div></div>
         <div class="rl-metric"><div class="rl-metric-label">Games/sec</div><div class="rl-metric-value speed">${speed}</div></div>
-        <div class="rl-metric"><div class="rl-metric-label">Algorithm</div><div class="rl-metric-value" style="color:var(--purple);font-size:0.65rem">Expectimax</div></div>
+        <div class="rl-metric"><div class="rl-metric-label">Algorithm</div><div class="rl-metric-value" style="color:var(--purple);font-size:0.7rem">${agent.algo || 'default'}</div></div>
       </div>
       <div class="milestones">${buildMilestonesHtml(agent.highest||0)}</div>
     </div>
@@ -518,7 +519,7 @@ async function refresh() {
           if (vals[4]) vals[4].innerHTML = `${fmt(agent.avgScore||0)}${trend}`;
           if (vals[5]) vals[5].textContent = elapsed;
           if (vals[6]) vals[6].textContent = speed;
-          // vals[7] is Algorithm, static
+          if (vals[7]) vals[7].textContent = agent.algo || 'default';
           const ms = card.querySelector('.milestones');
           if (ms) ms.innerHTML = buildMilestonesHtml(agent.highest||0);
         }

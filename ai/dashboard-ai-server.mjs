@@ -160,7 +160,15 @@ async function getFullStatus(runDir) {
   for (const agent of AGENTS) {
     const entries = await readProgressLog(agent.id, runDir);
     const state = deriveStatus(entries);
-    results.push({ ...agent, ...state });
+    // run の meta.json からアルゴリズム名を取得 (ダッシュボード表示用)
+    let algo = null;
+    try {
+      const dir = runDir
+        ? join(PROJECT_ROOT, 'runs', agent.id, 'ai', 'results', runDir)
+        : await findLatestRunDir(agent.id);
+      if (dir) algo = JSON.parse(await readFile(join(dir, 'meta.json'), 'utf-8')).algo;
+    } catch { /* meta なし */ }
+    results.push({ ...agent, ...state, algo });
   }
   return results;
 }
@@ -202,9 +210,12 @@ const server = createServer(async (req, res) => {
     projectRoot: PROJECT_ROOT,
     launchScript: join(PROJECT_ROOT, 'ai', 'launch-ai-race.sh'),
     buildLaunchArgs: (p) => {
+      const games = String(clampInt(p.games, 1, 100000, 2000));
+      // compare: 4種を各エージェントに割り当てて同時比較 (claude=rl, codex=expectimax, gemini=montecarlo, local=greedy)
+      if (p.algo === 'compare') return [games, '--algos', 'rl,expectimax,montecarlo,greedy'];
       const ALLOWED = ['rl', 'expectimax', 'montecarlo', 'greedy', 'random'];
       const algo = ALLOWED.includes(p.algo) ? p.algo : 'rl';
-      return [String(clampInt(p.games, 1, 100000, 2000)), '--algo', algo];
+      return [games, '--algo', algo];
     },
     buildLaunchEnv: (p) => ({ ...process.env, GAME_DELAY_MS: String(clampInt(p.delay, 0, 5000, 0)) }),
     resetCmd: 'pkill -f evaluate.mjs 2>/dev/null; rm -rf runs/*/ai/results/run-* runs/*/ai/results/progress.log; true',
