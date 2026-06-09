@@ -28,3 +28,22 @@ for (const name of ALGOS) {
     assert.ok(g.getScore() >= 0);
   });
 }
+
+// SEED固定での再現性 (#4 のリグレッション防止)。状態を持たない決定論/seed対応アルゴリズムのみ。
+// (rl は学習状態を持ち越すため対象外)
+for (const name of ['greedy', 'expectimax', 'montecarlo']) {
+  test(`${name}: SEED固定で完全再現する`, async () => {
+    const { default: chooseMove } = await import(`./algorithms/${name}.mjs`);
+    const play = (seed) => {
+      const g = new Game(seed);
+      let trace = '';
+      for (let i = 0; i < 15 && !g.isGameOver(); i++) {
+        const m = chooseMove(g.getBoard(), g.getScore(), g);
+        if (!m) break;
+        g.move(m); trace += m[0];
+      }
+      return trace + ':' + g.getScore();
+    };
+    assert.equal(play(123), play(123), `${name} は同じseedで同じプレイをする`);
+  });
+}
