@@ -147,3 +147,6 @@ export default function chooseMove(board, score, game) {
   prevAfter = bestAfter;
   return bestDir;
 }
+
+// ── テスト用 named export (default の chooseMove には影響しない) ──
+export { SYMS, TUPLES, value, learn, toLog2 };

@@ -100,6 +100,7 @@
   }
   .badge-waiting { background: #2a2e3d; color: #6b7089; }
   .badge-playing { background: rgba(96,165,250,0.15); color: var(--blue); }
+  .badge-finished { background: rgba(52,211,153,0.15); color: var(--green); }
   .pulse-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
   .badge-playing .pulse-dot { animation: pulse 1.4s ease-in-out infinite; }
   @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
@@ -439,6 +440,11 @@ async function refresh() {
         const card = col.querySelector('.score-card');
         if (card) {
           card.className = `score-card status-${agent.status}`;
+          const badge = card.querySelector('.badge');
+          if (badge) {
+            badge.className = `badge badge-${agent.status}`;
+            badge.innerHTML = `<div class="pulse-dot"></div>${agent.status === 'playing' ? 'Playing' : agent.status === 'finished' ? 'Done' : 'Waiting'}`;
+          }
           const vals = card.querySelectorAll('.rl-metric-value');
           const wr = agent.games > 0 ? `${Math.round((agent.winRate||0)*100)}%` : '-';
           const trend = trendArrow(agent.avgScore, agent.recentAvgScore);
