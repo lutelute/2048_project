@@ -18,7 +18,7 @@ import { spawn } from 'node:child_process';
 const JSON_HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
 
 export async function handleControlRoute(req, res, url, config) {
-  const { projectRoot, launchScript, buildLaunchArgs, buildLaunchEnv, resetCmd } = config;
+  const { projectRoot, launchScript, buildLaunchArgs, buildLaunchEnv, resetCmd, stopCmd } = config;
 
   // POST /api/run — レースを detached 起動 (launch-*.sh が自身のdashboardを再起動するためブラウザ側で数秒後リロード)
   if (url.pathname === '/api/run' && req.method === 'POST') {
@@ -43,6 +43,17 @@ export async function handleControlRoute(req, res, url, config) {
     });
     res.writeHead(200, JSON_HEADERS);
     res.end(JSON.stringify({ ok: true, action: 'reset' }));
+    return true;
+  }
+
+  // POST /api/stop — レースを停止するが結果は保持する (一時停止/途中経過の確認用)
+  if (url.pathname === '/api/stop' && req.method === 'POST' && stopCmd) {
+    await new Promise((resolve) => {
+      const c = spawn('bash', ['-c', stopCmd], { cwd: projectRoot, stdio: 'ignore' });
+      c.on('close', resolve); c.on('error', resolve);
+    });
+    res.writeHead(200, JSON_HEADERS);
+    res.end(JSON.stringify({ ok: true, action: 'stop' }));
     return true;
   }
 

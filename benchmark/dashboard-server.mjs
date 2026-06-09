@@ -112,9 +112,9 @@ function deriveStatus(entries) {
   const recent10 = gameHistory.slice(-10);
   const recentAvgScore = recent10.length > 0 ? Math.round(recent10.reduce((s, g) => s + g.score, 0) / recent10.length) : 0;
 
-  // 最終更新からの経過でライブ判定 (8秒以内=playing、それ以降=finished)
+  // 最終更新からの経過でライブ判定 (20秒以内=playing。montecarlo等の遅いアルゴリズムも考慮)
   const ageMs = lastTimestamp ? (Date.now() - new Date(lastTimestamp).getTime()) : Infinity;
-  const liveStatus = ageMs < 8000 ? 'playing' : 'finished';
+  const liveStatus = ageMs < 20000 ? 'playing' : 'finished';
 
   return {
     status: liveStatus,
@@ -171,6 +171,7 @@ const server = createServer(async (req, res) => {
     launchScript: join(PROJECT_ROOT, 'benchmark', 'launch-race.sh'),
     buildLaunchArgs: (p) => [String(clampInt(p.games, 1, 100000, 100))],
     resetCmd: 'pkill -f play.mjs 2>/dev/null; pkill -f "Google Chrome for Testing" 2>/dev/null; for p in 4001 4002 4003 4004; do lsof -ti :$p | xargs kill 2>/dev/null; done; rm -f runs/*/benchmark/results/progress.log runs/*/benchmark/results/stdout.log; true',
+    stopCmd: 'pkill -f play.mjs 2>/dev/null; pkill -f "Google Chrome for Testing" 2>/dev/null; for p in 4001 4002 4003 4004; do lsof -ti :$p | xargs kill 2>/dev/null; done; true',
   })) return;
 
   // Serve dashboard HTML

@@ -131,9 +131,9 @@ function deriveStatus(entries) {
     if (elapsed > 0) gamesPerSec = ((n - 1) / elapsed).toFixed(1);
   }
 
-  // 最終更新からの経過でライブ判定 (8秒以内=playing、それ以降=finished)
+  // 最終更新からの経過でライブ判定 (20秒以内=playing。montecarlo等の遅いアルゴリズムも考慮)
   const ageMs = lastTs ? (Date.now() - new Date(lastTs).getTime()) : Infinity;
-  const liveStatus = ageMs < 8000 ? 'playing' : 'finished';
+  const liveStatus = ageMs < 20000 ? 'playing' : 'finished';
 
   return {
     status: liveStatus,
@@ -219,6 +219,7 @@ const server = createServer(async (req, res) => {
     },
     buildLaunchEnv: (p) => ({ ...process.env, GAME_DELAY_MS: String(clampInt(p.delay, 0, 5000, 0)) }),
     resetCmd: 'pkill -f evaluate.mjs 2>/dev/null; rm -rf runs/*/ai/results/run-* runs/*/ai/results/progress.log; true',
+    stopCmd: 'pkill -f evaluate.mjs 2>/dev/null; true',
   })) return;
 
   if (url.pathname === '/' || url.pathname === '/dashboard.html') {

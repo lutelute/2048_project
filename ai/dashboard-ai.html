@@ -218,6 +218,7 @@
   .ctl-btn { cursor:pointer; border:none; border-radius:6px; padding:5px 16px; font-weight:700; font-size:0.72rem; color:#fff; }
   .ctl-btn.run { background:linear-gradient(135deg,var(--green),#16a34a); }
   .ctl-btn.run:disabled { opacity:0.5; cursor:not-allowed; }
+  .ctl-btn.stop { background:linear-gradient(135deg,var(--orange),#ea580c); }
   .ctl-btn.reset { background:var(--surface-alt); color:var(--text); border:1px solid var(--border); }
   .ctl-btn:active { transform:translateY(1px); }
   .ctl-msg { color:var(--accent); font-family:var(--mono); font-size:0.65rem; min-width:60px; }
@@ -249,6 +250,7 @@
   </label>
   <label title="学習を初回から観察するなら 50 程度に">Delay(ms) <input id="ctl-delay" type="number" value="0" min="0" max="5000"></label>
   <button id="btn-run" class="ctl-btn run">&#9654; Run</button>
+  <button id="btn-stop" class="ctl-btn stop">&#9209; Stop</button>
   <button id="btn-reset" class="ctl-btn reset">&#10227; Reset</button>
   <span id="ctl-msg" class="ctl-msg"></span>
 </div>
@@ -571,6 +573,11 @@ document.getElementById('btn-run').addEventListener('click', async () => {
     await fetch('/api/run', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ games, algo, delay }) });
     setTimeout(() => location.reload(), 6000);
   } catch (e) { ctlMsg('起動失敗: ' + e.message); btn.disabled = false; }
+});
+document.getElementById('btn-stop').addEventListener('click', async () => {
+  ctlMsg('停止中...');
+  try { await fetch('/api/stop', { method: 'POST' }); ctlMsg('停止しました (結果は保持)'); refresh(); }
+  catch (e) { ctlMsg('停止失敗: ' + e.message); }
 });
 document.getElementById('btn-reset').addEventListener('click', async () => {
   if (!confirm('評価を停止して結果をクリアします。よろしいですか？')) return;
