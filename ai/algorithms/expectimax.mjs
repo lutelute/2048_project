@@ -120,7 +120,9 @@ function expectimax(game, depth, isChanceNode) {
     if (emptyCells.length > 6 && depth > 1) {
       cells = [...emptyCells];
       for (let i = cells.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
+        // game のseed付きRNGを使い、SEED固定時にexpectimaxも再現可能にする
+        const rnd = typeof game._random === 'function' ? game._random() : Math.random();
+        const j = Math.floor(rnd * (i + 1));
         [cells[i], cells[j]] = [cells[j], cells[i]];
       }
       cells = cells.slice(0, 6);
