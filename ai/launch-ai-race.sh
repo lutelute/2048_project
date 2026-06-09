@@ -44,6 +44,8 @@ done
 
 AGENTS=("claude-code" "codex" "gemini" "local-cli")
 ALL_ALGOS=("random" "greedy" "montecarlo" "expectimax")
+# --algo で指定可能な全アルゴリズム (rl=N-tuple TD強化学習。all割り当ては ALL_ALGOS のみ使用)
+VALID_ALGOS=("random" "greedy" "montecarlo" "expectimax" "rl")
 
 # --algo all: 4つのアルゴリズムを4エージェントに割り当て
 if [ "$ALGO" = "all" ]; then
@@ -71,12 +73,12 @@ echo ""
 # アルゴリズム名の検証
 if [ -n "$ALGO" ] && [ "$ALGO" != "all" ]; then
   VALID=0
-  for a in "${ALL_ALGOS[@]}"; do
+  for a in "${VALID_ALGOS[@]}"; do
     [ "$a" = "$ALGO" ] && VALID=1
   done
   if [ "$VALID" -eq 0 ]; then
     echo "ERROR: 不明なアルゴリズム '$ALGO'"
-    echo "利用可能: ${ALL_ALGOS[*]}"
+    echo "利用可能: ${VALID_ALGOS[*]}"
     exit 1
   fi
 fi
@@ -156,7 +158,7 @@ for i in "${!AGENTS[@]}"; do
     ALGO_LABEL=" ($AGENT_ALGO)"
   fi
 
-  env RUN_ID="$RUN_ID" TOTAL_GAMES="$EVAL_GAMES" $ALGO_ENV node "$AI_DIR/evaluate.mjs" \
+  env RUN_ID="$RUN_ID" TOTAL_GAMES="$EVAL_GAMES" GAME_DELAY_MS="${GAME_DELAY_MS:-0}" $ALGO_ENV node "$AI_DIR/evaluate.mjs" \
     > "$AI_DIR/results/run-$RUN_ID/stdout.log" 2>&1 &
   PID=$!
   PIDS+=("$PID")

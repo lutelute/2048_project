@@ -114,7 +114,17 @@ function expectimax(game, depth, isChanceNode) {
     if (emptyCells.length === 0) return evaluateBoard(game.getBoard());
 
     let totalScore = 0;
-    const cells = emptyCells.length > 6 && depth > 1 ? emptyCells.slice(0, 6) : emptyCells;
+    // 空きセルが多い序盤は計算量削減のためサンプリングするが、
+    // slice(0,6) だと常に左上6セル固定で期待値が歪む。Fisher-Yates でランダム抽出する。
+    let cells = emptyCells;
+    if (emptyCells.length > 6 && depth > 1) {
+      cells = [...emptyCells];
+      for (let i = cells.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [cells[i], cells[j]] = [cells[j], cells[i]];
+      }
+      cells = cells.slice(0, 6);
+    }
 
     for (const cell of cells) {
       const idx = cell.row * 4 + cell.col;

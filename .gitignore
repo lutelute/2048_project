@@ -4,5 +4,6 @@ runs/
 benchmark/_frames/
 benchmark/results/
 ai/results/
+ai/algorithms/rl-model.bin
 *.local
 .DS_Store

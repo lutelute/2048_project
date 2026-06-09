@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { readFile, readdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { handleControlRoute, clampInt } from './dashboard-control.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, '..');
@@ -130,8 +131,12 @@ function deriveStatus(entries) {
     if (elapsed > 0) gamesPerSec = ((n - 1) / elapsed).toFixed(1);
   }
 
+  // 最終更新からの経過でライブ判定 (8秒以内=playing、それ以降=finished)
+  const ageMs = lastTs ? (Date.now() - new Date(lastTs).getTime()) : Infinity;
+  const liveStatus = ageMs < 8000 ? 'playing' : 'finished';
+
   return {
-    status: 'playing',
+    status: liveStatus,
     games: n,
     bestScore,
     avgScore,
@@ -192,10 +197,23 @@ const server = createServer(async (req, res) => {
     return;
   }
 
+  // Run / Reset 制御 (共通モジュール) — 5000番台: games + algo + delay
+  if (await handleControlRoute(req, res, url, {
+    projectRoot: PROJECT_ROOT,
+    launchScript: join(PROJECT_ROOT, 'ai', 'launch-ai-race.sh'),
+    buildLaunchArgs: (p) => {
+      const ALLOWED = ['rl', 'expectimax', 'montecarlo', 'greedy', 'random'];
+      const algo = ALLOWED.includes(p.algo) ? p.algo : 'rl';
+      return [String(clampInt(p.games, 1, 100000, 2000)), '--algo', algo];
+    },
+    buildLaunchEnv: (p) => ({ ...process.env, GAME_DELAY_MS: String(clampInt(p.delay, 0, 5000, 0)) }),
+    resetCmd: 'pkill -f evaluate.mjs 2>/dev/null; rm -rf runs/*/ai/results/run-* runs/*/ai/results/progress.log; true',
+  })) return;
+
   if (url.pathname === '/' || url.pathname === '/dashboard.html') {
     try {
       const html = await readFile(join(__dirname, 'dashboard-ai.html'), 'utf-8');
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, no-store, must-revalidate' });
       res.end(html);
     } catch {
       res.writeHead(500, { 'Content-Type': 'text/plain' });

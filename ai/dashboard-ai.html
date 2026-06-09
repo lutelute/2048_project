@@ -88,6 +88,7 @@
   }
   .score-card.status-playing::before { background: linear-gradient(90deg, var(--blue), var(--accent)); }
   .score-card.status-waiting::before { background: var(--border); }
+  .score-card.status-finished::before { background: var(--green); }
 
   .sc-header { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
   .sc-name { font-size: 0.9rem; font-weight: 700; }
@@ -208,6 +209,18 @@
   @media (max-width: 1000px) {
     .main-grid { grid-template-columns: repeat(2, 1fr); }
   }
+
+  /* Control bar (Run / Reset) */
+  .controls { display:flex; gap:8px; align-items:center; justify-content:center; max-width:1600px; margin:0 auto 12px; flex-wrap:wrap; font-size:0.72rem; }
+  .controls label { color:var(--text-dim); display:flex; align-items:center; gap:4px; }
+  .controls input, .controls select { background:var(--surface-alt); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:3px 6px; font-size:0.72rem; }
+  .controls input[type=number]{ width:72px; }
+  .ctl-btn { cursor:pointer; border:none; border-radius:6px; padding:5px 16px; font-weight:700; font-size:0.72rem; color:#fff; }
+  .ctl-btn.run { background:linear-gradient(135deg,var(--green),#16a34a); }
+  .ctl-btn.run:disabled { opacity:0.5; cursor:not-allowed; }
+  .ctl-btn.reset { background:var(--surface-alt); color:var(--text); border:1px solid var(--border); }
+  .ctl-btn:active { transform:translateY(1px); }
+  .ctl-msg { color:var(--accent); font-family:var(--mono); font-size:0.65rem; min-width:60px; }
 </style>
 </head>
 <body>
@@ -220,6 +233,23 @@
       <option value="">latest</option>
     </select>
   </div>
+</div>
+
+<div class="controls">
+  <label>Games <input id="ctl-games" type="number" value="2000" min="1" max="100000"></label>
+  <label>Algo
+    <select id="ctl-algo">
+      <option value="rl" selected>rl (強化学習)</option>
+      <option value="expectimax">expectimax</option>
+      <option value="montecarlo">montecarlo</option>
+      <option value="greedy">greedy</option>
+      <option value="random">random</option>
+    </select>
+  </label>
+  <label title="学習を初回から観察するなら 50 程度に">Delay(ms) <input id="ctl-delay" type="number" value="0" min="0" max="5000"></label>
+  <button id="btn-run" class="ctl-btn run">&#9654; Run</button>
+  <button id="btn-reset" class="ctl-btn reset">&#10227; Reset</button>
+  <span id="ctl-msg" class="ctl-msg"></span>
 </div>
 
 <div class="leaderboard" id="leaderboard"></div>
@@ -526,6 +556,30 @@ document.addEventListener('click', (e) => {
   const latestEl = document.getElementById(`board-latest-${agentId}`);
   if (bestEl) bestEl.style.display = view === 'best' ? '' : 'none';
   if (latestEl) latestEl.style.display = view === 'latest' ? '' : 'none';
+});
+
+// ── レース操作 (Run / Reset) ──
+function ctlMsg(m){ const e=document.getElementById('ctl-msg'); if(e) e.textContent=m; }
+document.getElementById('btn-run').addEventListener('click', async () => {
+  const games = parseInt(document.getElementById('ctl-games').value, 10) || 2000;
+  const algo = document.getElementById('ctl-algo').value;
+  const delay = parseInt(document.getElementById('ctl-delay').value, 10) || 0;
+  const btn = document.getElementById('btn-run'); btn.disabled = true;
+  ctlMsg(`起動中 (${algo}, ${games}ゲーム, delay ${delay}ms)... 数秒後に自動リロード`);
+  try {
+    await fetch('/api/run', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ games, algo, delay }) });
+    setTimeout(() => location.reload(), 6000);
+  } catch (e) { ctlMsg('起動失敗: ' + e.message); btn.disabled = false; }
+});
+document.getElementById('btn-reset').addEventListener('click', async () => {
+  if (!confirm('評価を停止して結果をクリアします。よろしいですか？')) return;
+  ctlMsg('リセット中...');
+  try {
+    await fetch('/api/reset', { method:'POST' });
+    initialized = false;
+    ctlMsg('リセット完了');
+    refresh();
+  } catch (e) { ctlMsg('リセット失敗: ' + e.message); }
 });
 
 loadRuns();

@@ -13,13 +13,24 @@ const WIN_VALUE = 2048;
 export const DIRECTIONS = ['up', 'down', 'left', 'right'];
 
 export class Game {
-  constructor() {
+  constructor(seed) {
     this.board = new Array(16).fill(0);
     this.score = 0;
     this.over = false;
     this.won = false;
+    // seed を渡すと決定論的(mulberry32)、省略すると Math.random。再現可能なベンチマーク用。
+    this._seed = (seed === undefined || seed === null) ? null : (seed >>> 0);
     this._addRandomTile();
     this._addRandomTile();
+  }
+
+  /** 内部RNG: seed があれば mulberry32 で決定論的に進める。clone でも状態が独立する。 */
+  _random() {
+    if (this._seed === null) return Math.random();
+    let a = (this._seed = (this._seed + 0x6D2B79F5) | 0);
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   }
 
   /** Get board as 4x4 array of actual values */
@@ -73,6 +84,7 @@ export class Game {
     g.score = this.score;
     g.over = this.over;
     g.won = this.won;
+    g._seed = this._seed;  // RNG状態を数値コピー → cloneのmove()は本筋の乱数列に影響しない
     return g;
   }
 
@@ -140,8 +152,8 @@ export class Game {
     const empty = [];
     for (let i = 0; i < 16; i++) if (this.board[i] === 0) empty.push(i);
     if (empty.length === 0) return;
-    const idx = empty[Math.floor(Math.random() * empty.length)];
-    this.board[idx] = Math.random() < 0.9 ? 2 : 4;
+    const idx = empty[Math.floor(this._random() * empty.length)];
+    this.board[idx] = this._random() < 0.9 ? 2 : 4;
   }
 
   _canMove() {
