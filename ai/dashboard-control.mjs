@@ -15,7 +15,9 @@
  */
 import { spawn } from 'node:child_process';
 
-const JSON_HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
+// コマンド実行API (run/stop/reset) は same-origin のダッシュボードからのみ呼ばれる。
+// Access-Control-Allow-Origin を付けない = 別オリジンの Webページからは叩けない (CSRF的保護)。
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
 export async function handleControlRoute(req, res, url, config) {
   const { projectRoot, launchScript, buildLaunchArgs, buildLaunchEnv, resetCmd, stopCmd } = config;
