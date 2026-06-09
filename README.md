@@ -150,7 +150,7 @@ RL_SAVE=1 RL_LOAD=0 ALGO=rl TOTAL_GAMES=50000 node ai/evaluate.mjs
 
 Dashboard: `http://localhost:5050` — avg/max score, win rate, tile distribution, learning curves, mini boards. **Run / Stop / Reset buttons** control races from the browser; select **Algo = compare** to pit all algorithms against each other.
 
-Available algorithms (`ai/algorithms/`): `random`, `greedy`, `montecarlo`, `expectimax`, and `rl` (N-tuple TD learning — ~21k avg / 48% win rate after pre-training, with `RL_SAVE`/`RL_LOAD` model persistence).
+Available algorithms (`ai/algorithms/`): `random`, `greedy`, `montecarlo`, `expectimax`, and `rl` (N-tuple TD learning — **~33k avg / 77% win rate** after ~250k games of pre-training, surpassing expectimax; with `RL_SAVE`/`RL_LOAD` model persistence so the trained model is reused).
 
 Each agent implements `ai/my-ai.mjs` exporting:
 
