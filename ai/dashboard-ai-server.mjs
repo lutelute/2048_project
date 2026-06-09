@@ -222,6 +222,15 @@ const server = createServer(async (req, res) => {
     stopCmd: 'pkill -f evaluate.mjs 2>/dev/null; true',
   })) return;
 
+  if (url.pathname === '/dashboard-shared.js') {
+    try {
+      const js = await readFile(join(__dirname, 'dashboard-shared.js'), 'utf-8');
+      res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
+      res.end(js);
+    } catch { res.writeHead(404); res.end('not found'); }
+    return;
+  }
+
   if (url.pathname === '/' || url.pathname === '/dashboard.html') {
     try {
       const html = await readFile(join(__dirname, 'dashboard-ai.html'), 'utf-8');

@@ -174,6 +174,15 @@ const server = createServer(async (req, res) => {
     stopCmd: 'pkill -f play.mjs 2>/dev/null; pkill -f "Google Chrome for Testing" 2>/dev/null; for p in 4001 4002 4003 4004; do lsof -ti :$p | xargs kill 2>/dev/null; done; true',
   })) return;
 
+  if (url.pathname === '/dashboard-shared.js') {
+    try {
+      const js = await readFile(join(__dirname, '..', 'ai', 'dashboard-shared.js'), 'utf-8');
+      res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
+      res.end(js);
+    } catch { res.writeHead(404); res.end('not found'); }
+    return;
+  }
+
   // Serve dashboard HTML
   if (url.pathname === '/' || url.pathname === '/dashboard.html') {
     try {
