@@ -19,9 +19,19 @@ const PORT = process.argv[2] || '5050';
 const SERVER = process.argv[3] || 'ai/dashboard-ai-server.mjs';
 
 function findChromium() {
-  try {
-    return execSync(`ls -d "$HOME/Library/Caches/ms-playwright"/chromium-*/chrome-mac-arm64/*.app/Contents/MacOS/* 2>/dev/null | head -1`, { shell: '/bin/bash' }).toString().trim();
-  } catch { return ''; }
+  // macOS / Linux(CI) 両対応。環境変数で明示指定も可
+  if (process.env.PLAYWRIGHT_CHROMIUM) return process.env.PLAYWRIGHT_CHROMIUM;
+  const globs = [
+    '"$HOME/Library/Caches/ms-playwright"/chromium-*/chrome-mac*/*.app/Contents/MacOS/*',
+    '"$HOME/.cache/ms-playwright"/chromium-*/chrome-linux*/chrome',
+  ];
+  for (const g of globs) {
+    try {
+      const r = execSync(`ls -d ${g} 2>/dev/null | head -1`, { shell: '/bin/bash' }).toString().trim();
+      if (r) return r;
+    } catch { /* try next */ }
+  }
+  return '';
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
