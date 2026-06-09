@@ -7,5 +7,7 @@ ai/results/
 ai/algorithms/rl-model.bin
 ai/.ai-race-pids
 benchmark/.race-pids
+logs/
+.claude/
 *.local
 .DS_Store
