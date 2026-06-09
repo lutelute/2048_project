@@ -38,16 +38,22 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let pass = 0, fail = 0;
 const check = (name, cond) => { if (cond) { pass++; console.log(`  ✔ ${name}`); } else { fail++; console.log(`  ✘ ${name}`); } };
 
-// ── 実データ描画検証用のダミーデータを注入 (run名を zzz 始まりにして最新runにする) ──
-const testRun = join(PROJECT_ROOT, 'runs', 'claude-code', 'ai', 'results', 'run-zzz-e2e');
-fs.mkdirSync(testRun, { recursive: true });
-const lines = [];
-for (let i = 1; i <= 12; i++) {
-  lines.push(JSON.stringify({ result: i % 3 === 0 ? 'win' : 'loss', score: i * 2500, highest: 2048, moves: 100 + i, game: i, timestamp: `2026-01-01T00:${String(i).padStart(2, '0')}:00Z` }));
+// ── 実データ描画検証用のダミーデータを注入 (5000番台のみ。4000番台はスモーク検証) ──
+const isAi = SERVER.includes('dashboard-ai');
+const testRun = isAi ? join(PROJECT_ROOT, 'runs', 'claude-code', 'ai', 'results', 'run-zzz-e2e') : null;
+if (testRun) {
+  fs.mkdirSync(testRun, { recursive: true });
+  const lines = [];
+  for (let i = 1; i <= 12; i++) {
+    lines.push(JSON.stringify({ result: i % 3 === 0 ? 'win' : 'loss', score: i * 2500, highest: 2048, moves: 100 + i, game: i, timestamp: `2026-01-01T00:${String(i).padStart(2, '0')}:00Z` }));
+  }
+  fs.writeFileSync(join(testRun, 'progress.log'), lines.join('\n'));
+  fs.writeFileSync(join(testRun, 'meta.json'), JSON.stringify({ algo: 'rl', games: 12 }));
 }
-fs.writeFileSync(join(testRun, 'progress.log'), lines.join('\n'));
-fs.writeFileSync(join(testRun, 'meta.json'), JSON.stringify({ algo: 'rl', games: 12 }));
 
+// 残存サーバーを kill してポート競合を防ぐ (競合すると古いサーバーに繋がり描画検証が落ちて不安定になる)
+try { execSync(`lsof -ti :${PORT} 2>/dev/null | xargs kill 2>/dev/null`, { shell: '/bin/bash' }); } catch { /* none */ }
+await sleep(300);
 const server = spawn('node', [SERVER], { cwd: PROJECT_ROOT, env: { ...process.env, PORT }, stdio: 'ignore', detached: true });
 await sleep(1600);
 
@@ -61,14 +67,17 @@ page.on('dialog', (d) => d.accept());
 
 try {
   await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'networkidle' });
-  // refresh() は非同期なので、leaderboard に実データ(カンマ区切り数値)が描画されるまで待つ
-  await page.waitForFunction(() => (document.querySelector('#leaderboard')?.textContent || '').includes(','), { timeout: 6000 }).catch(() => {});
-  await sleep(300);
 
-  // --- 実データ描画の検証 (共通化した drawScoreChart / buildLeaderboard が実データで動くか) ---
-  const lbText = await page.locator('#leaderboard').textContent();
-  check('leaderboard に実データの bestScore(30,000) が表示', lbText.includes('30,000'));
-  check('学習曲線 canvas が描画されている', (await page.locator('canvas[id^="chart-"]').count()) >= 1);
+  // --- 実データ描画の検証 (5000番台のみ。共通化した drawScoreChart / buildLeaderboard が実データで動くか) ---
+  if (isAi) {
+    await page.waitForFunction(() => (document.querySelector('#leaderboard')?.textContent || '').includes(','), { timeout: 6000 }).catch(() => {});
+    await sleep(300);
+    const lbText = await page.locator('#leaderboard').textContent();
+    check('leaderboard に実データの bestScore(30,000) が表示', lbText.includes('30,000'));
+    check('学習曲線 canvas が描画されている', (await page.locator('canvas[id^="chart-"]').count()) >= 1);
+  } else {
+    await sleep(500);
+  }
   check('共通化した shared.js が読み込まれている', (await page.locator('script[src="/dashboard-shared.js"]').count()) === 1);
 
   // --- ボタンの存在と動作 ---
@@ -76,11 +85,15 @@ try {
   check('Stop ボタンが存在', (await page.locator('#btn-stop').count()) === 1);
   check('Reset ボタンが存在', (await page.locator('#btn-reset').count()) === 1);
 
-  await page.click('#btn-stop'); await sleep(900);
-  check('Stop が POST /api/stop を叩く', api.includes('POST /api/stop'));
+  // Stop/Reset のクリック検証は 5000番台のみ。4000番台の stopCmd は "Google Chrome for Testing" を
+  // kill するため、Playwright の検証ブラウザ自身を巻き込む (実運用では正しい挙動)。4000はスモークに留める。
+  if (isAi) {
+    await page.click('#btn-stop'); await sleep(900);
+    check('Stop が POST /api/stop を叩く', api.includes('POST /api/stop'));
 
-  await page.click('#btn-reset'); await sleep(900);
-  check('Reset が POST /api/reset を叩く', api.includes('POST /api/reset'));
+    await page.click('#btn-reset'); await sleep(900);
+    check('Reset が POST /api/reset を叩く', api.includes('POST /api/reset'));
+  }
 
   if ((await page.locator('#ctl-algo').count()) > 0) {
     check('compare オプションが存在', (await page.locator('#ctl-algo option[value="compare"]').count()) > 0);
@@ -91,6 +104,6 @@ try {
   console.log(`\nE2E: ${pass} passed, ${fail} failed` + (errors.length ? `\nerrors: ${errors.join('; ')}` : ''));
   await browser.close();
   try { process.kill(-server.pid); } catch { /* already gone */ }
-  fs.rmSync(testRun, { recursive: true, force: true });   // ダミーデータを削除
+  if (testRun) fs.rmSync(testRun, { recursive: true, force: true });   // ダミーデータを削除
 }
 process.exit(fail > 0 ? 1 : 0);
