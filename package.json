@@ -8,8 +8,10 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "node --test ai/*.test.mjs",
+    "test:sh": "bash -n benchmark/*.sh ai/*.sh ai/self-improve/*.sh",
     "test:e2e": "node benchmark/dashboard.e2e.mjs",
-    "test:e2e:4000": "node benchmark/dashboard.e2e.mjs 4000 benchmark/dashboard-server.mjs"
+    "test:e2e:4000": "node benchmark/dashboard.e2e.mjs 4000 benchmark/dashboard-server.mjs",
+    "test:e2e:6000": "node benchmark/dashboard.e2e.mjs 6050 ai/dashboard-ai-server.mjs"
   },
   "dependencies": {
     "react": "^19.2.0",

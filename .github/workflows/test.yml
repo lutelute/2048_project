@@ -23,6 +23,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      # 3層 (4000/5000/6000) の運用シェルスクリプト全部の構文チェック
+      - run: npm run test:sh
 
   e2e:
     name: E2E (dashboard buttons, real browser)
@@ -41,3 +43,4 @@ jobs:
       - run: echo "PLAYWRIGHT_CHROMIUM=$(which google-chrome)" >> "$GITHUB_ENV"
       - run: npm run test:e2e
       - run: npm run test:e2e:4000
+      - run: npm run test:e2e:6000
