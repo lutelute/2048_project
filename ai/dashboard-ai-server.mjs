@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { readFile, readdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { handleControlRoute, clampInt } from './dashboard-control.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, '..');
@@ -130,8 +131,12 @@ function deriveStatus(entries) {
     if (elapsed > 0) gamesPerSec = ((n - 1) / elapsed).toFixed(1);
   }
 
+  // 最終更新からの経過でライブ判定 (20秒以内=playing。montecarlo等の遅いアルゴリズムも考慮)
+  const ageMs = lastTs ? (Date.now() - new Date(lastTs).getTime()) : Infinity;
+  const liveStatus = ageMs < 20000 ? 'playing' : 'finished';
+
   return {
-    status: 'playing',
+    status: liveStatus,
     games: n,
     bestScore,
     avgScore,
@@ -155,7 +160,15 @@ async function getFullStatus(runDir) {
   for (const agent of AGENTS) {
     const entries = await readProgressLog(agent.id, runDir);
     const state = deriveStatus(entries);
-    results.push({ ...agent, ...state });
+    // run の meta.json からアルゴリズム名を取得 (ダッシュボード表示用)
+    let algo = null;
+    try {
+      const dir = runDir
+        ? join(PROJECT_ROOT, 'runs', agent.id, 'ai', 'results', runDir)
+        : await findLatestRunDir(agent.id);
+      if (dir) algo = JSON.parse(await readFile(join(dir, 'meta.json'), 'utf-8')).algo;
+    } catch { /* meta なし */ }
+    results.push({ ...agent, ...state, algo });
   }
   return results;
 }
@@ -192,10 +205,36 @@ const server = createServer(async (req, res) => {
     return;
   }
 
+  // Run / Reset 制御 (共通モジュール) — 5000番台: games + algo + delay
+  if (await handleControlRoute(req, res, url, {
+    projectRoot: PROJECT_ROOT,
+    launchScript: join(PROJECT_ROOT, 'ai', 'launch-ai-race.sh'),
+    buildLaunchArgs: (p) => {
+      const games = String(clampInt(p.games, 1, 100000, 2000));
+      // compare: 4種を各エージェントに割り当てて同時比較 (claude=rl, codex=expectimax, gemini=montecarlo, local=greedy)
+      if (p.algo === 'compare') return [games, '--algos', 'rl,expectimax,montecarlo,greedy'];
+      const ALLOWED = ['rl', 'expectimax', 'montecarlo', 'greedy', 'random'];
+      const algo = ALLOWED.includes(p.algo) ? p.algo : 'rl';
+      return [games, '--algo', algo];
+    },
+    buildLaunchEnv: (p) => ({ ...process.env, GAME_DELAY_MS: String(clampInt(p.delay, 0, 5000, 0)) }),
+    resetCmd: 'pkill -f evaluate.mjs 2>/dev/null; rm -rf runs/*/ai/results/run-* runs/*/ai/results/progress.log; true',
+    stopCmd: 'pkill -f evaluate.mjs 2>/dev/null; true',
+  })) return;
+
+  if (url.pathname === '/dashboard-shared.js') {
+    try {
+      const js = await readFile(join(__dirname, 'dashboard-shared.js'), 'utf-8');
+      res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
+      res.end(js);
+    } catch { res.writeHead(404); res.end('not found'); }
+    return;
+  }
+
   if (url.pathname === '/' || url.pathname === '/dashboard.html') {
     try {
       const html = await readFile(join(__dirname, 'dashboard-ai.html'), 'utf-8');
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, no-store, must-revalidate' });
       res.end(html);
     } catch {
       res.writeHead(500, { 'Content-Type': 'text/plain' });

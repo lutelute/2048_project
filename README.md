@@ -137,14 +137,20 @@ Each AI agent writes its own `chooseMove` function using any strategy (heuristic
 ./ai/setup-ai-race.sh
 
 # 2. Launch evaluation
-./ai/launch-ai-race.sh           # 200 games (default)
-./ai/launch-ai-race.sh 500       # 500 games
+./ai/launch-ai-race.sh                        # 200 games, baseline (my-ai.mjs = expectimax)
+./ai/launch-ai-race.sh 500 --algo montecarlo  # all agents use one algorithm
+./ai/launch-ai-race.sh --algos rl,expectimax,montecarlo,greedy   # per-agent algorithms (compare!)
+
+# Pre-train the RL agent (N-tuple TD) and save the model for reuse:
+RL_SAVE=1 RL_LOAD=0 ALGO=rl TOTAL_GAMES=50000 node ai/evaluate.mjs
 
 # 3. Stop
 ./ai/stop-ai-race.sh
 ```
 
-Dashboard: `http://localhost:5050` — shows avg/max score, win rate, tile distribution, score trend charts, and mini board visualizations for each agent.
+Dashboard: `http://localhost:5050` — avg/max score, win rate, tile distribution, learning curves, mini boards. **Run / Stop / Reset buttons** control races from the browser; select **Algo = compare** to pit all algorithms against each other.
+
+Available algorithms (`ai/algorithms/`): `random`, `greedy`, `montecarlo`, `expectimax`, and `rl` (N-tuple TD learning — **~33k avg / 77% win rate** after ~250k games of pre-training, surpassing expectimax; with `RL_SAVE`/`RL_LOAD` model persistence so the trained model is reused).
 
 Each agent implements `ai/my-ai.mjs` exporting:
 
@@ -340,6 +346,17 @@ Dashboard: `http://localhost:6050` — same visualization as 5000-series (score 
 **Target:** Each agent should reach >80% win rate through self-improvement, starting from zero.
 
 ---
+
+## Testing
+
+```bash
+npm test          # unit tests (game-engine + logic.ts parity + RL symmetry — 48 tests)
+npm run test:e2e  # dashboard E2E (Playwright, real-browser button checks)
+```
+
+CI (`.github/workflows/test.yml`) runs both on every push / PR.
+
+**Reproducibility**: set `SEED` to make evaluation deterministic, e.g. `SEED=42 ./ai/launch-ai-race.sh --algo greedy`. Tile spawns are fully seeded; expectimax/montecarlo carry internal randomness, so bit-exact reproducibility holds for deterministic algorithms.
 
 ## License
 

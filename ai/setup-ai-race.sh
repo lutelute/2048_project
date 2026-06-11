@@ -46,13 +46,21 @@ for NAME in "${AGENTS[@]}"; do
   cp "$SCRIPT_DIR/challenge-prompt.txt" "$AI_DIR/challenge-prompt.txt"
   echo "  challenge-prompt.txt: コピー済み"
 
-  # ベースラインAI (既にmy-ai.mjsがあれば上書きしない)
-  if [ ! -f "$AI_DIR/my-ai.mjs" ]; then
-    cp "$SCRIPT_DIR/my-ai.mjs" "$AI_DIR/my-ai.mjs"
-    echo "  my-ai.mjs: ベースライン配置 (expectimax AI)"
-  else
-    echo "  my-ai.mjs: 既存のAIを保持"
+  # アルゴリズム集をコピー (学習済みRLモデルがあれば一緒に配布して即戦力にする)
+  if [ -d "$SCRIPT_DIR/algorithms" ]; then
+    mkdir -p "$AI_DIR/algorithms"
+    cp "$SCRIPT_DIR/algorithms/"*.mjs "$AI_DIR/algorithms/"
+    if [ -f "$SCRIPT_DIR/algorithms/rl-model.bin" ]; then
+      cp "$SCRIPT_DIR/algorithms/rl-model.bin" "$AI_DIR/algorithms/"
+      echo "  algorithms/ + rl-model.bin(学習済み): コピー済み"
+    else
+      echo "  algorithms/: コピー済み (rl-model.bin なし — rlは事前学習を推奨)"
+    fi
   fi
+
+  # ベースラインAI (常にExpectimax AIを配置して確実に動作させる)
+  cp "$SCRIPT_DIR/my-ai.mjs" "$AI_DIR/my-ai.mjs"
+  echo "  my-ai.mjs: ベースライン配置 (expectimax AI)"
 
   echo "  ai/ ready"
   echo ""

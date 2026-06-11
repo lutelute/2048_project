@@ -88,6 +88,7 @@
   }
   .score-card.status-playing::before { background: linear-gradient(90deg, var(--blue), var(--accent)); }
   .score-card.status-waiting::before { background: var(--border); }
+  .score-card.status-finished::before { background: var(--green); }
 
   .sc-header { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
   .sc-name { font-size: 0.9rem; font-weight: 700; }
@@ -100,6 +101,7 @@
   }
   .badge-waiting { background: #2a2e3d; color: #6b7089; }
   .badge-playing { background: rgba(96,165,250,0.15); color: var(--blue); }
+  .badge-finished { background: rgba(52,211,153,0.15); color: var(--green); }
   .pulse-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
   .badge-playing .pulse-dot { animation: pulse 1.4s ease-in-out infinite; }
   @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
@@ -179,8 +181,8 @@
   }
   .mini-cell {
     display: flex; align-items: center; justify-content: center;
-    border-radius: 4px; font-family: var(--mono); font-weight: 700;
-    aspect-ratio: 1; font-size: 0.6rem; transition: all 0.3s;
+    border-radius: 4px; font-family: var(--mono); font-weight: 800;
+    aspect-ratio: 1; font-size: 1rem; transition: all 0.3s;
   }
   .mini-cell-0    { background: rgba(238,228,218,0.35); }
   .mini-cell-2    { background: #eee4da; color: #776e65; }
@@ -189,13 +191,13 @@
   .mini-cell-16   { background: #f59563; color: #f9f6f2; }
   .mini-cell-32   { background: #f67c5f; color: #f9f6f2; }
   .mini-cell-64   { background: #f65e3b; color: #f9f6f2; }
-  .mini-cell-128  { background: #edcf72; color: #f9f6f2; font-size: 0.55rem; }
-  .mini-cell-256  { background: #edcc61; color: #f9f6f2; font-size: 0.55rem; }
-  .mini-cell-512  { background: #edc850; color: #f9f6f2; font-size: 0.55rem; }
-  .mini-cell-1024 { background: #edc53f; color: #f9f6f2; font-size: 0.5rem; }
-  .mini-cell-2048 { background: #edc22e; color: #f9f6f2; font-size: 0.5rem; text-shadow: 0 0 6px rgba(255,255,255,0.4); }
-  .mini-cell-4096 { background: #3c3a32; color: #f9f6f2; font-size: 0.5rem; }
-  .mini-cell-8192 { background: #3c3a32; color: #f9f6f2; font-size: 0.45rem; }
+  .mini-cell-128  { background: #edcf72; color: #f9f6f2; font-size: 0.85rem; }
+  .mini-cell-256  { background: #edcc61; color: #f9f6f2; font-size: 0.85rem; }
+  .mini-cell-512  { background: #edc850; color: #f9f6f2; font-size: 0.85rem; }
+  .mini-cell-1024 { background: #edc53f; color: #f9f6f2; font-size: 0.7rem; }
+  .mini-cell-2048 { background: #edc22e; color: #f9f6f2; font-size: 0.7rem; text-shadow: 0 0 6px rgba(255,255,255,0.4); }
+  .mini-cell-4096 { background: #3c3a32; color: #f9f6f2; font-size: 0.7rem; }
+  .mini-cell-8192 { background: #3c3a32; color: #f9f6f2; font-size: 0.62rem; }
   .no-board { color: var(--text-dim); font-size: 0.55rem; text-align: center; padding: 16px; }
 
   .refresh-indicator {
@@ -208,6 +210,19 @@
   @media (max-width: 1000px) {
     .main-grid { grid-template-columns: repeat(2, 1fr); }
   }
+
+  /* Control bar (Run / Reset) */
+  .controls { display:flex; gap:8px; align-items:center; justify-content:center; max-width:1600px; margin:0 auto 12px; flex-wrap:wrap; font-size:0.72rem; }
+  .controls label { color:var(--text-dim); display:flex; align-items:center; gap:4px; }
+  .controls input, .controls select { background:var(--surface-alt); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:3px 6px; font-size:0.72rem; }
+  .controls input[type=number]{ width:72px; }
+  .ctl-btn { cursor:pointer; border:none; border-radius:6px; padding:5px 16px; font-weight:700; font-size:0.72rem; color:#fff; }
+  .ctl-btn.run { background:linear-gradient(135deg,var(--green),#16a34a); }
+  .ctl-btn.run:disabled { opacity:0.5; cursor:not-allowed; }
+  .ctl-btn.stop { background:linear-gradient(135deg,var(--orange),#ea580c); }
+  .ctl-btn.reset { background:var(--surface-alt); color:var(--text); border:1px solid var(--border); }
+  .ctl-btn:active { transform:translateY(1px); }
+  .ctl-msg { color:var(--accent); font-family:var(--mono); font-size:0.65rem; min-width:60px; }
 </style>
 </head>
 <body>
@@ -222,94 +237,35 @@
   </div>
 </div>
 
+<div class="controls">
+  <label>Games <input id="ctl-games" type="number" value="2000" min="1" max="100000"></label>
+  <label>Algo
+    <select id="ctl-algo">
+      <option value="rl" selected>rl (強化学習)</option>
+      <option value="expectimax">expectimax</option>
+      <option value="montecarlo">montecarlo</option>
+      <option value="greedy">greedy</option>
+      <option value="random">random</option>
+      <option value="compare">&#9876; compare (4種同時)</option>
+    </select>
+  </label>
+  <label title="学習を初回から観察するなら 50 程度に">Delay(ms) <input id="ctl-delay" type="number" value="0" min="0" max="5000"></label>
+  <button id="btn-run" class="ctl-btn run">&#9654; Run</button>
+  <button id="btn-stop" class="ctl-btn stop">&#9209; Stop</button>
+  <button id="btn-reset" class="ctl-btn reset">&#10227; Reset</button>
+  <span id="ctl-msg" class="ctl-msg"></span>
+</div>
+
 <div class="leaderboard" id="leaderboard"></div>
 <div class="main-grid" id="main-grid"></div>
 
 <div class="refresh-indicator"><div class="refresh-dot"></div><span>Live</span></div>
 
+<script src="/dashboard-shared.js"></script>
 <script>
 const MILESTONE_TILES = [64, 128, 256, 512, 1024, 2048, 4096, 8192];
-const AGENT_COLORS = {
-  'claude-code': '#6c72ff',
-  'codex': '#34d399',
-  'gemini': '#fbbf24',
-  'local-cli': '#f472b6',
-};
 
-function fmt(n) { return n.toLocaleString(); }
 
-function drawScoreChart(canvas, history, agentColor) {
-  if (!history || history.length < 2) {
-    const ctx = canvas.getContext('2d');
-    canvas.width = canvas.offsetWidth * 2; canvas.height = 160;
-    ctx.scale(2, 2);
-    ctx.fillStyle = '#4a4e63'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('Waiting for data...', canvas.width/4, 40);
-    return;
-  }
-  const w = canvas.offsetWidth, h = 80;
-  canvas.width = w * 2; canvas.height = h * 2;
-  const ctx = canvas.getContext('2d');
-  ctx.scale(2, 2);
-
-  const scores = history.map(g => g.score);
-  const maxS = Math.max(...scores, 1);
-  const pad = {l:28, r:4, t:4, b:14};
-  const cw = w - pad.l - pad.r, ch = h - pad.t - pad.b;
-
-  // Grid lines
-  ctx.strokeStyle = '#2a2e3d'; ctx.lineWidth = 0.5;
-  for (let i = 0; i <= 3; i++) {
-    const y = pad.t + (ch / 3) * i;
-    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
-    ctx.fillStyle = '#6b7089'; ctx.font = '7px monospace'; ctx.textAlign = 'right';
-    ctx.fillText(fmt(Math.round(maxS * (1 - i/3))), pad.l - 3, y + 3);
-  }
-
-  // Moving average (window 5)
-  const windowSize = Math.min(5, Math.floor(scores.length / 2)) || 1;
-  const ma = [];
-  for (let i = 0; i < scores.length; i++) {
-    const start = Math.max(0, i - windowSize + 1);
-    const slice = scores.slice(start, i + 1);
-    ma.push(slice.reduce((a,b)=>a+b,0) / slice.length);
-  }
-
-  // Draw MA line (thick, semi-transparent)
-  if (ma.length >= 2) {
-    ctx.strokeStyle = agentColor + '40'; ctx.lineWidth = 3; ctx.lineCap = 'round';
-    ctx.beginPath();
-    for (let i = 0; i < ma.length; i++) {
-      const x = pad.l + (i / (scores.length - 1)) * cw;
-      const y = pad.t + ch - (ma[i] / maxS) * ch;
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-  }
-
-  // Score line
-  ctx.strokeStyle = agentColor; ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  for (let i = 0; i < scores.length; i++) {
-    const x = pad.l + (i / (scores.length - 1)) * cw;
-    const y = pad.t + ch - (scores[i] / maxS) * ch;
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  }
-  ctx.stroke();
-
-  // Win/loss dots
-  for (let i = 0; i < history.length; i++) {
-    const x = pad.l + (i / (scores.length - 1)) * cw;
-    const y = pad.t + ch - (scores[i] / maxS) * ch;
-    ctx.fillStyle = history[i].result === 'win' ? '#34d399' : '#f8717180';
-    ctx.beginPath(); ctx.arc(x, y, history[i].result === 'win' ? 3 : 1.5, 0, Math.PI*2); ctx.fill();
-  }
-
-  // X axis label
-  ctx.fillStyle = '#6b7089'; ctx.font = '7px monospace'; ctx.textAlign = 'center';
-  ctx.fillText(`Game 1`, pad.l, h - 1);
-  ctx.fillText(`${scores.length}`, w - pad.r, h - 1);
-}
 
 function buildBoardHtml(board) {
   if (!board) return '<div class="no-board">No board data yet</div>';
@@ -355,25 +311,7 @@ function buildMilestonesHtml(highest) {
   }).join('');
 }
 
-function formatElapsed(first, last, server) {
-  if (!first) return '--:--';
-  const start = new Date(first).getTime();
-  const end = last ? new Date(last).getTime() : new Date(server).getTime();
-  let d = Math.max(0, Math.floor((end-start)/1000));
-  const h=Math.floor(d/3600); d%=3600; const m=Math.floor(d/60); const s=d%60;
-  if (h>0) return `${h}h${String(m).padStart(2,'0')}m`;
-  return `${m}m${String(s).padStart(2,'0')}s`;
-}
 
-function trendArrow(avg, recent) {
-  if (!avg || !recent) return '';
-  const diff = recent - avg;
-  const pct = avg > 0 ? Math.round((diff / avg) * 100) : 0;
-  if (Math.abs(pct) < 3) return '';
-  return diff > 0
-    ? `<span style="color:var(--green);font-size:0.55rem"> +${pct}%</span>`
-    : `<span style="color:var(--red);font-size:0.55rem"> ${pct}%</span>`;
-}
 
 function buildLeaderboard(agents) {
   const sorted = [...agents].sort((a,b) => (b.bestScore||0) - (a.bestScore||0));
@@ -415,7 +353,7 @@ function buildAgentColumn(agent, serverTime) {
         <div class="rl-metric"><div class="rl-metric-label">Avg Score</div><div class="rl-metric-value score">${fmt(agent.avgScore||0)}${trend}</div></div>
         <div class="rl-metric"><div class="rl-metric-label">Elapsed</div><div class="rl-metric-value" style="color:var(--accent);font-size:0.8rem">${elapsed}</div></div>
         <div class="rl-metric"><div class="rl-metric-label">Games/sec</div><div class="rl-metric-value speed">${speed}</div></div>
-        <div class="rl-metric"><div class="rl-metric-label">Algorithm</div><div class="rl-metric-value" style="color:var(--purple);font-size:0.65rem">Expectimax</div></div>
+        <div class="rl-metric"><div class="rl-metric-label">Algorithm</div><div class="rl-metric-value" style="color:var(--purple);font-size:0.7rem">${agent.algo || 'default'}</div></div>
       </div>
       <div class="milestones">${buildMilestonesHtml(agent.highest||0)}</div>
     </div>
@@ -476,6 +414,11 @@ async function refresh() {
         const card = col.querySelector('.score-card');
         if (card) {
           card.className = `score-card status-${agent.status}`;
+          const badge = card.querySelector('.badge');
+          if (badge) {
+            badge.className = `badge badge-${agent.status}`;
+            badge.innerHTML = `<div class="pulse-dot"></div>${agent.status === 'playing' ? 'Running' : agent.status === 'finished' ? 'Done' : 'Waiting'}`;
+          }
           const vals = card.querySelectorAll('.rl-metric-value');
           const wr = agent.games > 0 ? `${Math.round((agent.winRate||0)*100)}%` : '-';
           const trend = trendArrow(agent.avgScore, agent.recentAvgScore);
@@ -488,7 +431,7 @@ async function refresh() {
           if (vals[4]) vals[4].innerHTML = `${fmt(agent.avgScore||0)}${trend}`;
           if (vals[5]) vals[5].textContent = elapsed;
           if (vals[6]) vals[6].textContent = speed;
-          // vals[7] is Algorithm, static
+          if (vals[7]) vals[7].textContent = agent.algo || 'default';
           const ms = card.querySelector('.milestones');
           if (ms) ms.innerHTML = buildMilestonesHtml(agent.highest||0);
         }
@@ -526,6 +469,35 @@ document.addEventListener('click', (e) => {
   const latestEl = document.getElementById(`board-latest-${agentId}`);
   if (bestEl) bestEl.style.display = view === 'best' ? '' : 'none';
   if (latestEl) latestEl.style.display = view === 'latest' ? '' : 'none';
+});
+
+// ── レース操作 (Run / Reset) ──
+function ctlMsg(m){ const e=document.getElementById('ctl-msg'); if(e) e.textContent=m; }
+document.getElementById('btn-run').addEventListener('click', async () => {
+  const games = parseInt(document.getElementById('ctl-games').value, 10) || 2000;
+  const algo = document.getElementById('ctl-algo').value;
+  const delay = parseInt(document.getElementById('ctl-delay').value, 10) || 0;
+  const btn = document.getElementById('btn-run'); btn.disabled = true;
+  ctlMsg(`起動中 (${algo}, ${games}ゲーム, delay ${delay}ms)... 数秒後に自動リロード`);
+  try {
+    await fetch('/api/run', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ games, algo, delay }) });
+    setTimeout(() => location.reload(), 6000);
+  } catch (e) { ctlMsg('起動失敗: ' + e.message); btn.disabled = false; }
+});
+document.getElementById('btn-stop').addEventListener('click', async () => {
+  ctlMsg('停止中...');
+  try { await fetch('/api/stop', { method: 'POST' }); ctlMsg('停止しました (結果は保持)'); refresh(); }
+  catch (e) { ctlMsg('停止失敗: ' + e.message); }
+});
+document.getElementById('btn-reset').addEventListener('click', async () => {
+  if (!confirm('評価を停止して結果をクリアします。よろしいですか？')) return;
+  ctlMsg('リセット中...');
+  try {
+    await fetch('/api/reset', { method:'POST' });
+    initialized = false;
+    ctlMsg('リセット完了');
+    refresh();
+  } catch (e) { ctlMsg('リセット失敗: ' + e.message); }
 });
 
 loadRuns();

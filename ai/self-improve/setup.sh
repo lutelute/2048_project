@@ -56,6 +56,13 @@ for NAME in "${AGENTS[@]}"; do
   cp "$SCRIPT_DIR/challenge-prompt.txt" "$DIR/challenge-prompt.txt"
   echo "  game-engine.mjs, evaluate.mjs, challenge-prompt.txt: コピー済み"
 
+  # アルゴリズム集をコピー (リファレンス実装)
+  if [ -d "$AI_DIR/algorithms" ]; then
+    mkdir -p "$DIR/algorithms"
+    cp "$AI_DIR/algorithms/"*.mjs "$DIR/algorithms/"
+    echo "  algorithms/: リファレンス実装コピー済み"
+  fi
+
   # ランダムベースラインで上書き (6000番台は全員ゼロスタート)
   echo "$BASELINE" > "$DIR/my-ai.mjs"
   echo "  my-ai.mjs: ランダムベースラインにリセット"

@@ -1,0 +1,43 @@
+name: Test
+
+on:
+  push:
+    branches: [main]        # main へのpush(マージ後)のみ。PRは pull_request で検証し二重実行を避ける
+  pull_request:
+  workflow_dispatch:
+
+concurrency:                # 同一ブランチの古いrunは自動キャンセル
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Unit tests (game-engine + logic.ts parity)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  e2e:
+    name: E2E (dashboard buttons, real browser)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12     # ハング時に6時間待たず失敗させる
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # Linux + Node 24 では playwright install (playwright-core CLI 含む) が解凍フェーズでハングする。
+      # ランナー同梱のシステム Chrome を使い、ブラウザのダウンロード自体を不要にする
+      # (dashboard.e2e.mjs の findChromium() が PLAYWRIGHT_CHROMIUM を最優先で参照する)
+      - run: echo "PLAYWRIGHT_CHROMIUM=$(which google-chrome)" >> "$GITHUB_ENV"
+      - run: npm run test:e2e
+      - run: npm run test:e2e:4000

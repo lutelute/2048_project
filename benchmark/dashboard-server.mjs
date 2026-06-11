@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { handleControlRoute, clampInt } from '../ai/dashboard-control.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, '..');
@@ -111,8 +112,12 @@ function deriveStatus(entries) {
   const recent10 = gameHistory.slice(-10);
   const recentAvgScore = recent10.length > 0 ? Math.round(recent10.reduce((s, g) => s + g.score, 0) / recent10.length) : 0;
 
+  // 最終更新からの経過でライブ判定 (20秒以内=playing。montecarlo等の遅いアルゴリズムも考慮)
+  const ageMs = lastTimestamp ? (Date.now() - new Date(lastTimestamp).getTime()) : Infinity;
+  const liveStatus = ageMs < 20000 ? 'playing' : 'finished';
+
   return {
-    status: isLastResult ? 'playing' : 'playing',
+    status: liveStatus,
     score: currentScore,
     highest: currentHighest,
     moves: lastMove ? (lastMove.move || 0) : (last.moves || last.move || 0),
@@ -160,11 +165,29 @@ const server = createServer(async (req, res) => {
     return;
   }
 
+  // Run / Reset 制御 (共通モジュール) — 4000番台: games のみ
+  if (await handleControlRoute(req, res, url, {
+    projectRoot: PROJECT_ROOT,
+    launchScript: join(PROJECT_ROOT, 'benchmark', 'launch-race.sh'),
+    buildLaunchArgs: (p) => [String(clampInt(p.games, 1, 100000, 100))],
+    resetCmd: 'pkill -f play.mjs 2>/dev/null; pkill -f "Google Chrome for Testing" 2>/dev/null; for p in 4001 4002 4003 4004; do lsof -ti :$p | xargs kill 2>/dev/null; done; rm -f runs/*/benchmark/results/progress.log runs/*/benchmark/results/stdout.log; true',
+    stopCmd: 'pkill -f play.mjs 2>/dev/null; pkill -f "Google Chrome for Testing" 2>/dev/null; for p in 4001 4002 4003 4004; do lsof -ti :$p | xargs kill 2>/dev/null; done; true',
+  })) return;
+
+  if (url.pathname === '/dashboard-shared.js') {
+    try {
+      const js = await readFile(join(__dirname, '..', 'ai', 'dashboard-shared.js'), 'utf-8');
+      res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' });
+      res.end(js);
+    } catch { res.writeHead(404); res.end('not found'); }
+    return;
+  }
+
   // Serve dashboard HTML
   if (url.pathname === '/' || url.pathname === '/dashboard.html') {
     try {
       const html = await readFile(join(__dirname, 'dashboard.html'), 'utf-8');
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, no-store, must-revalidate' });
       res.end(html);
     } catch {
       res.writeHead(500, { 'Content-Type': 'text/plain' });

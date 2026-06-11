@@ -1,8 +1,9 @@
 You are competing in a 2048 AI Self-Improvement Challenge.
 
-Your goal: Starting from ZERO, design, implement, and iteratively improve
-a 2048-playing AI. You will be judged on your final win rate, the quality
-of your approach, and how quickly you improve.
+YOUR MISSION: Build a 2048 AI that achieves 100% win rate.
+Do not stop until every single game reaches the 2048 tile.
+You have full autonomy — decide what to build, how to optimize,
+and when to push harder. No one will tell you what to do next.
 
 == SETUP ==
 
@@ -10,6 +11,7 @@ Everything is already in place:
   ai/game-engine.mjs   — The 2048 game engine (DO NOT MODIFY)
   ai/evaluate.mjs      — Evaluation script (writes results to ai/results/progress.log)
   ai/my-ai.mjs         — YOUR AI FILE (this is what you create/modify)
+  ai/algorithms/        — Reference implementations (random, greedy, montecarlo, expectimax)
 
 == YOUR TASK ==
 
@@ -20,6 +22,7 @@ Everything is already in place:
    - game.getValidMoves()   → list of legal moves
    - game.getEmptyCells()   → empty cell positions
    - game.getHighestTile()  → max tile value
+   - game.getBoardLog2()    → flat Uint8Array of log2 values (fast)
 
 2. Create ai/my-ai.mjs exporting:
    export default function chooseMove(board, score, game) {
@@ -33,49 +36,83 @@ Everything is already in place:
 
 5. IMPROVE your AI and repeat steps 3-4
 
-== IMPROVEMENT LOOP ==
+== AUTONOMOUS IMPROVEMENT LOOP ==
 
-This is the key: you must iterate. A typical progression:
+You are fully autonomous. Do not wait for instructions.
+After each evaluation, immediately decide your next move:
 
+  - If win rate < 50%: your algorithm is fundamentally weak. Redesign it.
+  - If win rate 50-80%: good foundation. Tune weights, increase search depth.
+  - If win rate 80-95%: close. Analyze the losing games — what pattern kills you?
+  - If win rate 95-99%: almost there. Consider edge-case handling, deeper search
+    in critical positions, or adaptive depth.
+  - If win rate 100%: congratulations! Run 200 games to confirm robustness.
+
+Typical progression:
   Round 1: Random moves           → avg ~1,000, 0% win rate
   Round 2: Simple heuristic       → avg ~5,000, 0% win rate
-  Round 3: Better heuristic       → avg ~10,000, 5% win rate
-  Round 4: Expectimax search      → avg ~20,000, 30% win rate
-  Round 5: Tuned expectimax       → avg ~30,000, 60% win rate
-  Round 6: Advanced techniques    → avg ~40,000+, 90%+ win rate
+  Round 3: Corner + monotonicity  → avg ~10,000, 5% win rate
+  Round 4: Expectimax depth 2     → avg ~20,000, 30% win rate
+  Round 5: Tuned expectimax d3    → avg ~30,000, 60% win rate
+  Round 6: Deep search + tuning   → avg ~40,000, 80% win rate
+  Round 7: Advanced techniques    → avg ~50,000+, 95%+ win rate
+  Round 8: Perfection             → 100% win rate
 
-After each evaluation, analyze:
-  - What tiles are you reaching? (check tile distribution)
-  - Where are games ending? (board state at loss)
-  - Is your AI fast enough? (must be <100ms per move on average)
+DO NOT STOP AT "GOOD ENOUGH". Keep going until 100%.
 
-== STRATEGY HINTS ==
+== USE ALL AVAILABLE RESOURCES ==
 
-Level 1 - Greedy heuristics:
-  - Prefer down/left moves (keep big tiles in corner)
-  - Count empty cells (more = better)
-  - Check monotonicity (rows/columns in order)
+You have compute. Use it wisely:
+  - Increase search depth when you can afford the time
+  - Use adaptive depth: go deeper in critical positions (few empty cells)
+  - Profile your AI: if it's fast, push the depth higher
+  - Consider precomputation (lookup tables, weight tuning)
+  - You can create helper files in ai/ — use them for lookup tables,
+    precomputed weights, or offline training scripts
+
+== STRATEGY ROADMAP ==
+
+Level 1 - Heuristics:
+  - Snake/zigzag weight pattern (keep biggest tile in corner)
+  - Monotonicity (rows/columns in order)
+  - Empty cell bonus (more = better, exponential weight)
+  - Smoothness (penalize large differences between neighbors)
+  - Merge potential (adjacent equal tiles)
 
 Level 2 - Search:
-  - Expectimax: evaluate future board states with random tile spawns
-  - Depth 2-3 is usually sufficient for good play
+  - Expectimax: evaluate future states considering random tile spawns
+  - Adaptive depth: deeper when board is tight (≤4 empty cells → depth 4+)
+  - Pruning: skip unlikely outcomes, sample empty cells when many
 
-Level 3 - Advanced:
-  - N-tuple networks with TD learning
-  - Monte Carlo tree search
-  - Transposition tables for caching
+Level 3 - Advanced (for 95%→100%):
+  - Transposition tables (cache evaluated positions)
+  - Bitboard representation (encode board as 64-bit integer)
+  - N-tuple networks with TD(0) learning
+  - Move ordering for better pruning
+  - Monte Carlo rollouts for position evaluation
+
+== ANALYSIS TIPS ==
+
+After each evaluation, check:
+  - Tile distribution: are you consistently reaching 1024? 2048?
+  - Score variance: high variance means inconsistent play
+  - Speed: games/sec tells you if you can afford deeper search
+  - Losing positions: what does the board look like at game over?
+    Is your big tile trapped? Are you breaking monotonicity?
 
 == CONSTRAINTS ==
 
 - Your AI must choose a move in under 100ms on average
 - You MUST NOT modify game-engine.mjs
 - You MAY create helper files in the ai/ directory
-- Focus on ITERATION — don't try to build the perfect AI in one shot
+- You MAY read ai/algorithms/ for reference implementations
+- Focus on ITERATION — don't try to build the perfect AI in one shot,
+  but DO NOT stop iterating until you reach 100% win rate
 
 == START NOW ==
 
-Begin by reading ai/game-engine.mjs, then create your first simple AI.
-Run evaluation, read the results, and improve. Repeat until you're
-consistently reaching 2048.
+Begin by reading ai/game-engine.mjs, then create your first AI.
+Run evaluation, read results, improve. Keep iterating autonomously.
+Your target is 100% win rate — nothing less is acceptable.
 
-Good luck!
+Go.

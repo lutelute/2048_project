@@ -23,13 +23,28 @@ function getArg(name, defaultVal) {
 }
 
 const numGames = parseInt(process.env.TOTAL_GAMES || getArg('--games', '100'), 10);
-const aiPath = getArg('--ai', path.join(import.meta.dirname, 'my-ai.mjs'));
+const algoName = process.env.ALGO || getArg('--algo', '');
+// 学習過程をリアルタイム観察するためのゲーム間ディレイ(ms)。0=最高速(従来通り)
+const gameDelayMs = parseInt(process.env.GAME_DELAY_MS || getArg('--delay', '0'), 10);
+// 再現性: SEED を指定すると各ゲームが決定論的になる (game N の seed = baseSeed + N)。未指定なら Math.random。
+const seedArg = process.env.SEED || getArg('--seed', '');
+const baseSeed = seedArg !== '' ? parseInt(seedArg, 10) : null;
+const aiPath = algoName
+  ? path.join(import.meta.dirname, 'algorithms', `${algoName}.mjs`)
+  : getArg('--ai', path.join(import.meta.dirname, 'my-ai.mjs'));
 const runId = process.env.RUN_ID || new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, 19);
 const logDir = path.join(import.meta.dirname, 'results', `run-${runId}`);
 const logPath = path.join(logDir, 'progress.log');
 
 // Ensure results directory exists
 fs.mkdirSync(logDir, { recursive: true });
+
+// run のメタ情報 (ダッシュボードでアルゴリズム名を表示するため)
+fs.writeFileSync(path.join(logDir, 'meta.json'), JSON.stringify({
+  algo: algoName || 'my-ai',
+  games: numGames,
+  seed: baseSeed,
+}));
 
 // Load AI
 let chooseMove;
@@ -59,7 +74,7 @@ const tileDistribution = {};
 let wins = 0;
 
 for (let g = 0; g < numGames; g++) {
-  const game = new Game();
+  const game = new Game(baseSeed === null ? undefined : baseSeed + g);
   let moves = 0;
 
   while (!game.isGameOver()) {
@@ -97,6 +112,9 @@ for (let g = 0; g < numGames; g++) {
     const wr = (wins / (g + 1) * 100).toFixed(1);
     process.stdout.write(`\r  ${g + 1}/${numGames} games | WR: ${wr}% | Elapsed: ${elapsed}s`);
   }
+
+  // ゲーム間ディレイ: 学習曲線を初回からリアルタイムで観察したいとき用
+  if (gameDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, gameDelayMs));
 }
 
 const elapsed = Date.now() - t0;

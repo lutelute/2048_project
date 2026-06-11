@@ -45,11 +45,11 @@ for entry in "${AGENTS[@]}"; do
     echo "先に ./ai/self-improve/setup.sh を実行してください。"
     exit 1
   fi
-  if command -v "$CLI" &>/dev/null; then
+  if command -v "$CLI" &>/dev/null && "$CLI" --version &>/dev/null; then
     AVAILABLE_AGENTS+=("$entry")
     echo "  ✓ $NAME ($CLI)"
   else
-    echo "  ✗ $NAME: $CLI not found — skipped"
+    echo "  ✗ $NAME: $CLI not available — skipped"
   fi
 done
 
@@ -93,7 +93,7 @@ fi
 echo ""
 echo "AI CLIを起動中..."
 
-ONELINER="You are in a 2048 AI Self-Improvement Challenge. Read ai/challenge-prompt.txt for full instructions. Your task: (1) Read ai/game-engine.mjs to understand the Game API, (2) Create or improve ai/my-ai.mjs, (3) Run: node ai/evaluate.mjs --games 50, (4) Read results and improve, (5) Repeat 3-4. Target: over 50 percent win rate. Start now."
+ONELINER="You are in a 2048 AI Self-Improvement Challenge. Read ai/challenge-prompt.txt for full instructions. Your mission: build a 2048 AI that achieves 100 percent win rate. You are fully autonomous — decide what to build, iterate, and do not stop until every game reaches 2048. Steps: (1) Read ai/game-engine.mjs for the API, (2) Create/improve ai/my-ai.mjs, (3) Run: node ai/evaluate.mjs --games 50, (4) Read results and improve, (5) Repeat 3-5 until 100 percent win rate. Reference algorithms in ai/algorithms/. Use all compute you can — deeper search, adaptive depth, precomputation. Start now."
 
 for entry in "${AVAILABLE_AGENTS[@]}"; do
   IFS='|' read -r NAME CLI FLAGS <<< "$entry"
@@ -117,7 +117,12 @@ RUNEOF
       echo "exec gemini -y -i \"$ONELINER\"" >> "$RUNNER"
       ;;
     local-cli)
-      echo "exec local-cli \"$ONELINER\"" >> "$RUNNER"
+      # local-cli is an interactive REPL; record PID for stop.sh, prompt pasted via osascript
+      cat >> "$RUNNER" << 'LCEOF'
+local-cli &
+echo $! > ai/.local-cli.pid
+wait
+LCEOF
       ;;
     *)
       echo "exec $CLI $FLAGS \"$ONELINER\"" >> "$RUNNER"
@@ -127,13 +132,37 @@ RUNEOF
 
   echo "  $NAME ($CLI)"
 
-  osascript <<OSEOF
+  if [ "$CLI" = "local-cli" ]; then
+    # local-cli is an interactive REPL — launch, wait for startup, then paste the prompt
+    osascript <<OSEOF
 tell application "Terminal"
   activate
   do script "bash '$RUNNER'"
   set custom title of front window to "6000-$NAME"
 end tell
 OSEOF
+    sleep 5
+    # Save prompt to clipboard and paste into the Terminal
+    echo -n "$ONELINER" | pbcopy
+    osascript <<OSEOF
+tell application "Terminal"
+  activate
+end tell
+tell application "System Events"
+  keystroke "v" using command down
+  delay 0.3
+  key code 36 -- press Return
+end tell
+OSEOF
+  else
+    osascript <<OSEOF
+tell application "Terminal"
+  activate
+  do script "bash '$RUNNER'"
+  set custom title of front window to "6000-$NAME"
+end tell
+OSEOF
+  fi
   sleep 2
 done
 
