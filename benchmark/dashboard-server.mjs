@@ -170,8 +170,10 @@ const server = createServer(async (req, res) => {
     projectRoot: PROJECT_ROOT,
     launchScript: join(PROJECT_ROOT, 'benchmark', 'launch-race.sh'),
     buildLaunchArgs: (p) => [String(clampInt(p.games, 1, 100000, 100))],
-    resetCmd: 'pkill -f play.mjs 2>/dev/null; pkill -f "Google Chrome for Testing" 2>/dev/null; for p in 4001 4002 4003 4004; do lsof -ti :$p | xargs kill 2>/dev/null; done; rm -f runs/*/benchmark/results/progress.log runs/*/benchmark/results/stdout.log; true',
-    stopCmd: 'pkill -f play.mjs 2>/dev/null; pkill -f "Google Chrome for Testing" 2>/dev/null; for p in 4001 4002 4003 4004; do lsof -ti :$p | xargs kill 2>/dev/null; done; true',
+    // ブラウザは "Google Chrome for Testing" を名前でpkillせず、play.mjs が launch 時に付ける
+    // マーカー (--race-2048-agent) で絞る。名前でkillするとE2Eの検証ブラウザまで巻き込むため
+    resetCmd: 'pkill -f play.mjs 2>/dev/null; pkill -f race-2048-agent 2>/dev/null; for p in 4001 4002 4003 4004; do lsof -ti :$p | xargs kill 2>/dev/null; done; rm -f runs/*/benchmark/results/progress.log runs/*/benchmark/results/stdout.log; true',
+    stopCmd: 'pkill -f play.mjs 2>/dev/null; pkill -f race-2048-agent 2>/dev/null; for p in 4001 4002 4003 4004; do lsof -ti :$p | xargs kill 2>/dev/null; done; true',
   })) return;
 
   if (url.pathname === '/dashboard-shared.js') {

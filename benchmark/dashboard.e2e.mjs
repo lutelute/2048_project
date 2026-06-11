@@ -38,7 +38,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let pass = 0, fail = 0;
 const check = (name, cond) => { if (cond) { pass++; console.log(`  ✔ ${name}`); } else { fail++; console.log(`  ✘ ${name}`); } };
 
-// ── 実データ描画検証用のダミーデータを注入 (5000番台のみ。4000番台はスモーク検証) ──
+// ── 実データ描画検証用のダミーデータを注入 (5000番台のみ。4000番台はボタン検証) ──
 const isAi = SERVER.includes('dashboard-ai');
 const testRun = isAi ? join(PROJECT_ROOT, 'runs', 'claude-code', 'ai', 'results', 'run-zzz-e2e') : null;
 if (testRun) {
@@ -85,15 +85,14 @@ try {
   check('Stop ボタンが存在', (await page.locator('#btn-stop').count()) === 1);
   check('Reset ボタンが存在', (await page.locator('#btn-reset').count()) === 1);
 
-  // Stop/Reset のクリック検証は 5000番台のみ。4000番台の stopCmd は "Google Chrome for Testing" を
-  // kill するため、Playwright の検証ブラウザ自身を巻き込む (実運用では正しい挙動)。4000はスモークに留める。
-  if (isAi) {
-    await page.click('#btn-stop'); await sleep(900);
-    check('Stop が POST /api/stop を叩く', api.includes('POST /api/stop'));
+  // Stop/Reset のクリック検証 (全層)。4000番台の stopCmd はかつて "Google Chrome for Testing" を
+  // 名前で pkill して検証ブラウザ自身を巻き込んだが、現在は play.mjs がブラウザ起動時に付ける
+  // マーカー (--race-2048-agent) で絞って kill するため、検証ブラウザは巻き込まれない。
+  await page.click('#btn-stop'); await sleep(900);
+  check('Stop が POST /api/stop を叩く', api.includes('POST /api/stop'));
 
-    await page.click('#btn-reset'); await sleep(900);
-    check('Reset が POST /api/reset を叩く', api.includes('POST /api/reset'));
-  }
+  await page.click('#btn-reset'); await sleep(900);
+  check('Reset が POST /api/reset を叩く', api.includes('POST /api/reset'));
 
   if ((await page.locator('#ctl-algo').count()) > 0) {
     check('compare オプションが存在', (await page.locator('#ctl-algo option[value="compare"]').count()) > 0);

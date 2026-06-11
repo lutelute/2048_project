@@ -302,7 +302,9 @@ async function playOneGame(page, gameNum) {
 
 async function main() {
   console.log(`Starting ${TOTAL_GAMES}-game race on ${GAME_URL}`);
-  const browser = await chromium.launch({ headless: false });
+  // --race-2048-agent: Chromeは未知フラグを無視する。dashboardのStop/Resetがこのマーカーで
+  // レース起動ブラウザだけをpkillするための識別子 (検証用・人間用ブラウザを巻き込まない)
+  const browser = await chromium.launch({ headless: false, args: ['--race-2048-agent'] });
   const page = await browser.newPage({ viewport: { width: 520, height: 700 } });
 
   await page.goto(GAME_URL, { waitUntil: 'networkidle' });

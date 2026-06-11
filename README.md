@@ -353,7 +353,7 @@ Dashboard: `http://localhost:6050` — same visualization as 5000-series (score 
 npm test               # unit tests (game-engine + logic.ts parity + RL symmetry — 63 tests)
 npm run test:sh        # bash -n syntax check for all tier scripts (4000/5000/6000)
 npm run test:e2e       # 5000-tier dashboard E2E (Playwright, real data rendering + buttons)
-npm run test:e2e:4000  # 4000-tier dashboard E2E (smoke)
+npm run test:e2e:4000  # 4000-tier dashboard E2E (buttons incl. Stop/Reset click-through)
 npm run test:e2e:6000  # 6000-tier dashboard E2E (same server on its production port 6050)
 ```
 

@@ -1,4 +1,4 @@
-import { chromium } from 'playwright';
+import { chromium } from 'playwright-core';
 import fs from 'fs';
 import path from 'path';
 
@@ -189,7 +189,8 @@ function simulateMove(board, direction) {
 
 async function main() {
   console.log('Launching browser in headed mode...');
-  const browser = await chromium.launch({ headless: false });
+  // --race-2048-agent: dashboardのStop/Resetがレース起動ブラウザだけをpkillするためのマーカー
+  const browser = await chromium.launch({ headless: false, args: ['--race-2048-agent'] });
   const page = await browser.newPage({ viewport: { width: 520, height: 700 } });
 
   console.log(`Navigating to ${GAME_URL}...`);
