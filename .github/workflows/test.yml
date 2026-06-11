@@ -35,8 +35,9 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      # ubuntu-latest は chromium 必要ライブラリを同梱済み。--with-deps の sudo apt を避けて高速・安定化
-      # Node 24 では playwright ラッパーの CLI が解凍後にハングするため playwright-core の CLI を使う
-      - run: node node_modules/playwright-core/cli.js install chromium
+      # Linux + Node 24 では playwright install (playwright-core CLI 含む) が解凍フェーズでハングする。
+      # ランナー同梱のシステム Chrome を使い、ブラウザのダウンロード自体を不要にする
+      # (dashboard.e2e.mjs の findChromium() が PLAYWRIGHT_CHROMIUM を最優先で参照する)
+      - run: echo "PLAYWRIGHT_CHROMIUM=$(which google-chrome)" >> "$GITHUB_ENV"
       - run: npm run test:e2e
       - run: npm run test:e2e:4000
