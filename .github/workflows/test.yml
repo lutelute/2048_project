@@ -16,8 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
@@ -29,13 +29,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 12     # ハング時に6時間待たず失敗させる
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
       - run: npm ci
       # ubuntu-latest は chromium 必要ライブラリを同梱済み。--with-deps の sudo apt を避けて高速・安定化
-      - run: npx playwright install chromium
+      # Node 24 では playwright ラッパーの CLI が解凍後にハングするため playwright-core の CLI を使う
+      - run: node node_modules/playwright-core/cli.js install chromium
       - run: npm run test:e2e
       - run: npm run test:e2e:4000
