@@ -13,8 +13,13 @@ echo "=== 2048 AI Benchmark — 停止中 ==="
 # play.mjs プロセスを停止
 pkill -f "play.mjs" 2>/dev/null && echo "  ✓ play.mjs プロセス停止" || echo "  - play.mjs プロセスなし"
 
-# Playwright ブラウザを停止
-pkill -f "Google Chrome for Testing" 2>/dev/null && echo "  ✓ Playwright ブラウザ停止" || echo "  - Playwright ブラウザなし"
+# レースのブラウザを停止 (play.mjs がlaunch時に付けるマーカーで絞る。検証用・人間用ブラウザは触らない)
+pkill -f race-2048-agent 2>/dev/null && echo "  ✓ レースブラウザ停止" || echo "  - レースブラウザなし"
+
+# 配信サーバー (vite preview) と残骸を停止
+pkill -f "vite preview --port 40" 2>/dev/null && echo "  ✓ vite preview 停止" || true
+pkill -f "vite --port 40" 2>/dev/null || true
+pkill -f "npm exec vite" 2>/dev/null || true
 
 # ポート 4000-4004 のプロセスを停止
 for port in 4000 4001 4002 4003 4004; do

@@ -6,6 +6,7 @@
 #   ./benchmark/launch-race.sh          # 全エージェント (100ゲーム)
 #   ./benchmark/launch-race.sh 50       # 全エージェント (50ゲーム)
 #   AGENTS="claude-code codex" ./benchmark/launch-race.sh  # 指定エージェントのみ
+#   NO_OPEN=1 ./benchmark/launch-race.sh 1  # ブラウザでダッシュボードを開かない (テスト用)
 #
 # 前提:
 #   ./benchmark/setup-race.sh を先に実行済みであること
@@ -86,50 +87,66 @@ fi
 # ── 1. 既存プロセスを停止 ──
 echo "既存プロセスをクリーンアップ..."
 pkill -f "play.mjs" 2>/dev/null || true
-pkill -f "Google Chrome for Testing" 2>/dev/null || true
+pkill -f race-2048-agent 2>/dev/null || true        # play.mjs起動ブラウザ (マーカーで絞る)
+pkill -f "vite preview --port 40" 2>/dev/null || true
+pkill -f "vite --port 40" 2>/dev/null || true       # 旧dev方式の残骸
+pkill -f "npm exec vite" 2>/dev/null || true        # 詰まったnpx解決の残骸
 for port in 4000 4001 4002 4003 4004; do
   lsof -ti :$port 2>/dev/null | xargs kill 2>/dev/null || true
 done
-sleep 2
+# ポート解放をポーリング (固定sleepより速く・確実)
+DEADLINE=$((SECONDS + 5))
+for port in 4000 4001 4002 4003 4004; do
+  while lsof -nP -i ":$port" -sTCP:LISTEN >/dev/null 2>&1 && [ "$SECONDS" -lt "$DEADLINE" ]; do
+    sleep 0.2
+  done
+done
 
-# ── 2. dev サーバー起動 (メインプロジェクトから) ──
-echo "dev サーバー起動中..."
+# ── 2. アプリ配信サーバー起動 (vite preview: ビルド済みdistの静的配信。devより軽量・高速) ──
+mkdir -p "$PROJECT_DIR/logs"
+echo "アプリをビルド中..."
+(cd "$PROJECT_DIR" && npm run build > "$PROJECT_DIR/logs/build.log" 2>&1) || {
+  echo "ERROR: ビルドに失敗しました。logs/build.log を確認してください。"
+  exit 1
+}
+
+echo "配信サーバー起動中 (vite preview)..."
 for NAME in "${AGENT_LIST[@]}"; do
   PORT=$(get_port "$NAME")
-  (cd "$PROJECT_DIR" && npx vite --port "$PORT" --strictPort > /dev/null 2>&1 &)
+  # npx は npmの解決レイヤーで遅延・ロック競合するため使わない (バイナリ直接実行)
+  ("$PROJECT_DIR/node_modules/.bin/vite" preview --port "$PORT" --strictPort \
+    > "$PROJECT_DIR/logs/vite-$PORT.log" 2>&1 &)
   echo "  $NAME → :$PORT"
 done
-sleep 4
 
-# 起動確認
-ALL_UP=true
+# 起動確認 (全ポートLISTENまでポーリング、最大15秒)
+DEADLINE=$((SECONDS + 15))
 for NAME in "${AGENT_LIST[@]}"; do
   PORT=$(get_port "$NAME")
-  if lsof -nP -i ":$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
-    echo "  ✓ $NAME :$PORT"
-  else
-    echo "  ✗ $NAME :$PORT FAILED"
-    ALL_UP=false
-  fi
+  until lsof -nP -i ":$PORT" -sTCP:LISTEN >/dev/null 2>&1; do
+    if [ "$SECONDS" -ge "$DEADLINE" ]; then
+      echo "  ✗ $NAME :$PORT FAILED (logs/vite-$PORT.log を確認)"
+      exit 1
+    fi
+    sleep 0.2
+  done
+  echo "  ✓ $NAME :$PORT"
 done
-
-if [ "$ALL_UP" = false ]; then
-  echo "ERROR: dev サーバーの起動に失敗しました。"
-  exit 1
-fi
 
 # ── 3. ダッシュボードサーバー起動 ──
 echo ""
 echo "ダッシュボード起動中..."
-node "$PROJECT_DIR/benchmark/dashboard-server.mjs" > /dev/null 2>&1 &
+node "$PROJECT_DIR/benchmark/dashboard-server.mjs" > "$PROJECT_DIR/logs/dashboard-4000.log" 2>&1 &
 DASHBOARD_PID=$!
-sleep 1
-if lsof -nP -i :4000 -sTCP:LISTEN >/dev/null 2>&1; then
-  echo "  ✓ ダッシュボード :4000"
-else
-  echo "  ✗ ダッシュボード :4000 FAILED"
-  exit 1
-fi
+DEADLINE=$((SECONDS + 10))
+until lsof -nP -i :4000 -sTCP:LISTEN >/dev/null 2>&1; do
+  if [ "$SECONDS" -ge "$DEADLINE" ]; then
+    echo "  ✗ ダッシュボード :4000 FAILED (logs/dashboard-4000.log を確認)"
+    exit 1
+  fi
+  sleep 0.2
+done
+echo "  ✓ ダッシュボード :4000"
 
 # ── 4. 結果クリア & エージェント起動 ──
 echo ""
@@ -147,9 +164,10 @@ for NAME in "${AGENT_LIST[@]}"; do
   echo "  $NAME → PID $PID"
 done
 
-# ── 5. ブラウザでダッシュボード表示 ──
-sleep 2
-open "http://localhost:4000"
+# ── 5. ブラウザでダッシュボード表示 (NO_OPEN=1 でスキップ) ──
+if [ -z "$NO_OPEN" ]; then
+  open "http://localhost:4000" 2>/dev/null || true
+fi
 
 echo ""
 echo "=== レース稼働中 ==="

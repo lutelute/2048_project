@@ -78,16 +78,18 @@ done
 
 # ── 3. ダッシュボードサーバー起動 ──
 echo "ダッシュボード起動中..."
-PORT=6050 node "$AI_DIR/dashboard-ai-server.mjs" > /dev/null 2>&1 &
+mkdir -p "$PROJECT_DIR/logs"
+PORT=6050 node "$AI_DIR/dashboard-ai-server.mjs" > "$PROJECT_DIR/logs/dashboard-6050.log" 2>&1 &
 DASHBOARD_PID=$!
-sleep 1
-
-if lsof -nP -i :6050 -sTCP:LISTEN >/dev/null 2>&1; then
-  echo "  ✓ ダッシュボード :6050"
-else
-  echo "  ✗ ダッシュボード :6050 FAILED"
-  exit 1
-fi
+DEADLINE=$((SECONDS + 10))
+until lsof -nP -i :6050 -sTCP:LISTEN >/dev/null 2>&1; do
+  if [ "$SECONDS" -ge "$DEADLINE" ]; then
+    echo "  ✗ ダッシュボード :6050 FAILED (logs/dashboard-6050.log を確認)"
+    exit 1
+  fi
+  sleep 0.2
+done
+echo "  ✓ ダッシュボード :6050"
 
 # ── 4. 各AI CLIをターミナルで起動 ──
 echo ""
@@ -166,9 +168,10 @@ OSEOF
   sleep 2
 done
 
-# ── 5. ブラウザでダッシュボード表示 ──
-sleep 2
-open "http://localhost:6050" 2>/dev/null || true
+# ── 5. ブラウザでダッシュボード表示 (NO_OPEN=1 でスキップ) ──
+if [ -z "$NO_OPEN" ]; then
+  open "http://localhost:6050" 2>/dev/null || true
+fi
 
 echo ""
 echo "=== レース開始 ==="

@@ -24,7 +24,7 @@ src/components/ Board.tsx, Tile.tsx, Header.tsx, Controls.tsx, GameOverlay.tsx, 
 src/utils/    storage.ts
 benchmark/
   setup-race.sh     — 初回セットアップ (runs/クローン + symlink + play.mjs配置)
-  launch-race.sh    — レース起動 (dev server + dashboard + 全エージェント)
+  launch-race.sh    — レース起動 (vite preview ×4 + dashboard + 全エージェント)
   stop-race.sh      — レース停止
   dashboard-server.mjs — ダッシュボードサーバー (:4000)
   dashboard.html    — ダッシュボードUI
@@ -57,9 +57,12 @@ runs/               — エージェント別クローン (※.gitignore済)
 ./benchmark/launch-race.sh 10       # 10ゲーム
 ./benchmark/launch-race.sh 50       # 50ゲーム
 ```
-- dev サーバー4つ + ダッシュボード + 全エージェント自動起動
+- 配信サーバー4つ (vite preview = ビルド済みdistの静的配信で軽量) + ダッシュボード + 全エージェント自動起動
 - ブラウザウィンドウ4つが開いて自動プレイ
 - ダッシュボード http://localhost:4000 でリアルタイム監視
+- `NO_OPEN=1` でブラウザの自動オープンを抑制 (テスト用、launch系3スクリプト共通)
+- 起動は数秒。残骸 (旧vite/npx詰まり/ポート占有) があっても自動クリーンアップして起動する
+- サーバー類のログは `logs/` に保存 (build.log, vite-PORT.log, dashboard-PORT.log)
 
 ### レース停止
 ```bash
@@ -77,6 +80,7 @@ runs/               — エージェント別クローン (※.gitignore済)
 
 ### 注意事項
 - Node 24 では `playwright` パッケージの import がハングする。`playwright-core` を使用すること
+- `npx` は解決レイヤーで遅延・ロック競合する (vite 4連発起動が数分詰まった実績)。スクリプトでは `node_modules/.bin/` のバイナリを直接実行すること
 - setup-race.sh は冪等 (何度実行しても安全)
 - launch-race.sh は既存プロセスを自動クリーンアップしてから起動
 

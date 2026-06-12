@@ -141,16 +141,18 @@ done
 
 # ── 2. ダッシュボードサーバー起動 ──
 echo "ダッシュボード起動中..."
-node "$SCRIPT_DIR/dashboard-ai-server.mjs" > /dev/null 2>&1 &
+mkdir -p "$PROJECT_DIR/logs"
+node "$SCRIPT_DIR/dashboard-ai-server.mjs" > "$PROJECT_DIR/logs/dashboard-5050.log" 2>&1 &
 DASHBOARD_PID=$!
-sleep 1
-
-if lsof -nP -i :5050 -sTCP:LISTEN >/dev/null 2>&1; then
-  echo "  ダッシュボード :5050"
-else
-  echo "  ダッシュボード :5050 FAILED"
-  exit 1
-fi
+DEADLINE=$((SECONDS + 10))
+until lsof -nP -i :5050 -sTCP:LISTEN >/dev/null 2>&1; do
+  if [ "$SECONDS" -ge "$DEADLINE" ]; then
+    echo "  ダッシュボード :5050 FAILED (logs/dashboard-5050.log を確認)"
+    exit 1
+  fi
+  sleep 0.2
+done
+echo "  ダッシュボード :5050"
 
 # ── 3. 評価開始 (ランごとに別フォルダ) ──
 RUN_ID=$(date +%Y-%m-%d_%H-%M-%S)
@@ -177,9 +179,10 @@ for i in "${!AGENTS[@]}"; do
   echo "  $NAME$ALGO_LABEL -> PID $PID"
 done
 
-# ── 4. ブラウザでダッシュボード表示 ──
-sleep 2
-open "http://localhost:5050" 2>/dev/null || xdg-open "http://localhost:5050" 2>/dev/null || true
+# ── 4. ブラウザでダッシュボード表示 (NO_OPEN=1 でスキップ) ──
+if [ -z "$NO_OPEN" ]; then
+  open "http://localhost:5050" 2>/dev/null || xdg-open "http://localhost:5050" 2>/dev/null || true
+fi
 
 echo ""
 echo "=== 評価稼働中 ==="
