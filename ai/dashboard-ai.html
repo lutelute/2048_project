@@ -175,30 +175,9 @@
     border: 1px solid transparent; transition: all 0.2s;
   }
   .board-tab.active { color: var(--text); border-color: var(--accent); background: rgba(108,114,255,0.15); }
-  .mini-board {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px;
-    background: #bbada0; border-radius: 6px; padding: 3px; aspect-ratio: 1;
-  }
-  .mini-cell {
-    display: flex; align-items: center; justify-content: center;
-    border-radius: 4px; font-family: var(--mono); font-weight: 800;
-    aspect-ratio: 1; font-size: 1rem; transition: all 0.3s;
-  }
-  .mini-cell-0    { background: rgba(238,228,218,0.35); }
-  .mini-cell-2    { background: #eee4da; color: #776e65; }
-  .mini-cell-4    { background: #ede0c8; color: #776e65; }
-  .mini-cell-8    { background: #f2b179; color: #f9f6f2; }
-  .mini-cell-16   { background: #f59563; color: #f9f6f2; }
-  .mini-cell-32   { background: #f67c5f; color: #f9f6f2; }
-  .mini-cell-64   { background: #f65e3b; color: #f9f6f2; }
-  .mini-cell-128  { background: #edcf72; color: #f9f6f2; font-size: 0.85rem; }
-  .mini-cell-256  { background: #edcc61; color: #f9f6f2; font-size: 0.85rem; }
-  .mini-cell-512  { background: #edc850; color: #f9f6f2; font-size: 0.85rem; }
-  .mini-cell-1024 { background: #edc53f; color: #f9f6f2; font-size: 0.7rem; }
-  .mini-cell-2048 { background: #edc22e; color: #f9f6f2; font-size: 0.7rem; text-shadow: 0 0 6px rgba(255,255,255,0.4); }
-  .mini-cell-4096 { background: #3c3a32; color: #f9f6f2; font-size: 0.7rem; }
-  .mini-cell-8192 { background: #3c3a32; color: #f9f6f2; font-size: 0.62rem; }
+  /* 盤面のCSS/配色は dashboard-shared.js の統一盤面 (injectBoardStyles) が提供する */
   .no-board { color: var(--text-dim); font-size: 0.55rem; text-align: center; padding: 16px; }
+  .live-meta { color: var(--text-dim); font-size: 0.55rem; text-align: center; margin-top: 4px; font-family: var(--mono); }
 
   .refresh-indicator {
     position: fixed; bottom: 8px; right: 12px; font-size: 0.6rem;
@@ -267,23 +246,22 @@ const MILESTONE_TILES = [64, 128, 256, 512, 1024, 2048, 4096, 8192];
 
 
 
-function buildBoardHtml(board) {
-  if (!board) return '<div class="no-board">No board data yet</div>';
-  return '<div class="mini-board">' + board.flat().map(v => {
-    const cls = v <= 8192 ? `mini-cell-${v}` : 'mini-cell-8192';
-    return `<div class="mini-cell ${cls}">${v || ''}</div>`;
-  }).join('') + '</div>';
+// 盤面描画は共通の buildBoardHtml (dashboard-shared.js)。null はデータ待ち表示にする
+function boardHtmlOr(board) {
+  return board ? buildBoardHtml(board) : '<div class="no-board">No board data yet</div>';
 }
 
 function buildBoardSectionHtml(agentId, bestBoard, latestBoard) {
   return `<div class="board-section">
-    <div class="chart-title">Final Board</div>
+    <div class="chart-title">Board</div>
     <div class="board-tabs">
-      <div class="board-tab active" data-agent="${agentId}" data-view="best">Best</div>
+      <div class="board-tab active" data-agent="${agentId}" data-view="live">Live</div>
+      <div class="board-tab" data-agent="${agentId}" data-view="best">Best</div>
       <div class="board-tab" data-agent="${agentId}" data-view="latest">Latest</div>
     </div>
-    <div id="board-best-${agentId}">${buildBoardHtml(bestBoard)}</div>
-    <div id="board-latest-${agentId}" style="display:none">${buildBoardHtml(latestBoard)}</div>
+    <div id="board-live-${agentId}"><div class="no-board">Idle — no running evaluation</div></div>
+    <div id="board-best-${agentId}" style="display:none">${boardHtmlOr(bestBoard)}</div>
+    <div id="board-latest-${agentId}" style="display:none">${boardHtmlOr(latestBoard)}</div>
   </div>`;
 }
 
@@ -437,11 +415,18 @@ async function refresh() {
         }
         const distEl = document.getElementById(`dist-${agent.id}`);
         if (distEl) distEl.innerHTML = buildTileDistHtml(agent.tileDistribution);
-        // Update boards
+        // Update boards (Live は evaluate.mjs の live-state.json 由来。停止中は idle 表示)
+        const liveBoardEl = document.getElementById(`board-live-${agent.id}`);
+        if (liveBoardEl) {
+          liveBoardEl.innerHTML = agent.live
+            ? buildBoardHtml(agent.live.board) +
+              `<div class="live-meta">Game ${agent.live.game}/${agent.live.totalGames} · ${fmt(agent.live.score)} pts</div>`
+            : '<div class="no-board">Idle — no running evaluation</div>';
+        }
         const bestBoardEl = document.getElementById(`board-best-${agent.id}`);
-        if (bestBoardEl) bestBoardEl.innerHTML = buildBoardHtml(agent.bestBoard);
+        if (bestBoardEl) bestBoardEl.innerHTML = boardHtmlOr(agent.bestBoard);
         const latestBoardEl = document.getElementById(`board-latest-${agent.id}`);
-        if (latestBoardEl) latestBoardEl.innerHTML = buildBoardHtml(agent.latestBoard);
+        if (latestBoardEl) latestBoardEl.innerHTML = boardHtmlOr(agent.latestBoard);
       });
     }
 
@@ -465,8 +450,10 @@ document.addEventListener('click', (e) => {
   tab.parentElement.querySelectorAll('.board-tab').forEach(t => t.classList.remove('active'));
   tab.classList.add('active');
   // Toggle board visibility
+  const liveEl = document.getElementById(`board-live-${agentId}`);
   const bestEl = document.getElementById(`board-best-${agentId}`);
   const latestEl = document.getElementById(`board-latest-${agentId}`);
+  if (liveEl) liveEl.style.display = view === 'live' ? '' : 'none';
   if (bestEl) bestEl.style.display = view === 'best' ? '' : 'none';
   if (latestEl) latestEl.style.display = view === 'latest' ? '' : 'none';
 });

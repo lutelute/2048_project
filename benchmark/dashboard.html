@@ -122,9 +122,8 @@
   /* Mini board */
   .board-wrapper {
     background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); overflow: hidden;
+    border-radius: var(--radius); overflow: hidden; padding: 6px;
   }
-  .board-wrapper canvas { display: block; width: 100%; aspect-ratio: 1; }
 
   /* Chart area */
   .chart-box {
@@ -214,33 +213,7 @@
 <script>
 const DIRECTION_ARROWS = { up: '\u2191', down: '\u2193', left: '\u2190', right: '\u2192' };
 const MILESTONE_TILES = [64, 128, 256, 512, 1024, 2048];
-const TILE_COLORS = {
-  0:{bg:'#cdc1b4',fg:'#cdc1b4'}, 2:{bg:'#eee4da',fg:'#776e65'}, 4:{bg:'#ede0c8',fg:'#776e65'},
-  8:{bg:'#f2b179',fg:'#f9f6f2'}, 16:{bg:'#f59563',fg:'#f9f6f2'}, 32:{bg:'#f67c5f',fg:'#f9f6f2'},
-  64:{bg:'#f65e3b',fg:'#f9f6f2'}, 128:{bg:'#edcf72',fg:'#f9f6f2'}, 256:{bg:'#edcc61',fg:'#f9f6f2'},
-  512:{bg:'#edc850',fg:'#f9f6f2'}, 1024:{bg:'#edc53f',fg:'#f9f6f2'}, 2048:{bg:'#edc22e',fg:'#f9f6f2'},
-  4096:{bg:'#3c3a32',fg:'#f9f6f2'},
-};
-
-function getTileColor(v) { return TILE_COLORS[v] || {bg:'#3c3a32',fg:'#f9f6f2'}; }
-
-function drawBoard(canvas, board) {
-  if (!board || !Array.isArray(board)) board = [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]];
-  const size = 400; canvas.width = size; canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  const pad = 8, gap = 8, ts = (size - pad*2 - gap*3) / 4;
-  ctx.fillStyle = '#bbada0'; ctx.beginPath(); ctx.roundRect(0,0,size,size,10); ctx.fill();
-  for (let r=0;r<4;r++) for (let c=0;c<4;c++) {
-    const x=pad+c*(ts+gap), y=pad+r*(ts+gap), v=board[r]?.[c]||0, col=getTileColor(v);
-    ctx.fillStyle=col.bg; ctx.beginPath(); ctx.roundRect(x,y,ts,ts,6); ctx.fill();
-    if (v>0) {
-      ctx.fillStyle=col.fg;
-      const fs = v>=1024?ts*0.28:v>=128?ts*0.33:ts*0.4;
-      ctx.font=`bold ${fs}px -apple-system,sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(String(v), x+ts/2, y+ts/2);
-    }
-  }
-}
+// \u76e4\u9762\u63cf\u753b\u306f dashboard-shared.js \u306e\u7d71\u4e00\u76e4\u9762 (buildBoardHtml)\u3002React\u7248\u30b2\u30fc\u30e0\u672c\u4f53\u3068\u540c\u3058\u898b\u305f\u76ee
 
 
 function buildTileDistHtml(dist) {
@@ -317,7 +290,7 @@ function buildAgentColumn(agent, serverTime) {
       <div id="dist-${agent.id}">${buildTileDistHtml(agent.tileDistribution)}</div>
     </div>
     <div class="board-wrapper">
-      <canvas id="board-${agent.id}"></canvas>
+      <div id="board-${agent.id}">${buildBoardHtml(null)}</div>
     </div>
   </div>`;
 }
@@ -368,10 +341,10 @@ async function refresh() {
       });
     }
 
-    // Draw boards + charts
+    // Draw boards + charts (盤面は共通の buildBoardHtml — ライブ更新)
     data.agents.forEach(agent => {
-      const boardCanvas = document.getElementById(`board-${agent.id}`);
-      if (boardCanvas) drawBoard(boardCanvas, agent.board);
+      const boardEl = document.getElementById(`board-${agent.id}`);
+      if (boardEl) boardEl.innerHTML = buildBoardHtml(agent.board);
       const chartCanvas = document.getElementById(`chart-${agent.id}`);
       if (chartCanvas) drawScoreChart(chartCanvas, agent.gameHistory, AGENT_COLORS[agent.id] || '#6c72ff');
     });

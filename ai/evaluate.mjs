@@ -68,6 +68,26 @@ console.log('');
 // Clear log file
 fs.writeFileSync(logPath, '');
 
+// ── ライブ盤面 (ダッシュボードの統一盤面ビュー用) ──
+// 手ごとの書き込みは高速評価で過負荷になるため 200ms スロットルで上書きする (best-effort)
+const livePath = path.join(import.meta.dirname, 'results', 'live-state.json');
+let lastLiveWrite = 0;
+function writeLiveState(game, moves, g, force = false) {
+  const now = Date.now();
+  if (!force && now - lastLiveWrite < 200) return;
+  lastLiveWrite = now;
+  try {
+    fs.writeFileSync(livePath, JSON.stringify({
+      board: game.getBoard(),
+      score: game.getScore(),
+      moves,
+      game: g + 1,
+      totalGames: numGames,
+      ts: now,
+    }));
+  } catch { /* ライブ表示は任意機能。失敗しても評価は続行 */ }
+}
+
 const t0 = Date.now();
 const scores = [];
 const tileDistribution = {};
@@ -82,8 +102,10 @@ for (let g = 0; g < numGames; g++) {
     if (!dir || !DIRECTIONS.includes(dir)) break;
     game.move(dir);
     moves++;
+    writeLiveState(game, moves, g);
     if (moves > 50000) break; // safety
   }
+  writeLiveState(game, moves, g, true);  // 終局盤面は必ず反映
 
   const score = game.getScore();
   const highest = game.getHighestTile();

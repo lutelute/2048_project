@@ -155,6 +155,18 @@ function deriveStatus(entries) {
   };
 }
 
+// evaluate.mjs が200msスロットルで上書きするライブ盤面。tsが古ければ評価停止中とみなしnull
+async function readLiveState(agentId) {
+  try {
+    const raw = await readFile(join(PROJECT_ROOT, 'runs', agentId, 'ai', 'results', 'live-state.json'), 'utf-8');
+    const live = JSON.parse(raw);
+    if (!live?.ts || Date.now() - live.ts > 3000) return null;
+    return live;
+  } catch {
+    return null;
+  }
+}
+
 async function getFullStatus(runDir) {
   const results = [];
   for (const agent of AGENTS) {
@@ -168,7 +180,8 @@ async function getFullStatus(runDir) {
         : await findLatestRunDir(agent.id);
       if (dir) algo = JSON.parse(await readFile(join(dir, 'meta.json'), 'utf-8')).algo;
     } catch { /* meta なし */ }
-    results.push({ ...agent, ...state, algo });
+    const live = await readLiveState(agent.id);
+    results.push({ ...agent, ...state, algo, live });
   }
   return results;
 }

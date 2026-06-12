@@ -83,6 +83,60 @@ function drawScoreChart(canvas, history, agentColor) {
   ctx.fillText(`${scores.length}`, w - pad.r, h - 1);
 }
 
+// ── 統一盤面コンポーネント (全ダッシュボード共通) ──
+// 配色は React版ゲーム本体 src/game/constants.ts の TILE_COLORS / SUPER_TILE_COLOR と同値。
+// 4000(ブラウザレース)〜6000(自己改善) でゲームの見た目を同一にする。
+const BOARD_TILE_COLORS = {
+  2:    { bg: '#eee4da', text: '#776e65' },
+  4:    { bg: '#ede0c8', text: '#776e65' },
+  8:    { bg: '#f2b179', text: '#f9f6f2' },
+  16:   { bg: '#f59563', text: '#f9f6f2' },
+  32:   { bg: '#f67c5f', text: '#f9f6f2' },
+  64:   { bg: '#f65e3b', text: '#f9f6f2' },
+  128:  { bg: '#edcf72', text: '#f9f6f2' },
+  256:  { bg: '#edcc61', text: '#f9f6f2' },
+  512:  { bg: '#edc850', text: '#f9f6f2' },
+  1024: { bg: '#edc53f', text: '#f9f6f2' },
+  2048: { bg: '#edc22e', text: '#f9f6f2' },
+};
+const BOARD_SUPER_COLOR = { bg: '#3c3a32', text: '#f9f6f2' };  // 4096以上
+const BOARD_EMPTY_BG = 'rgba(238,228,218,0.35)';
+
+function injectBoardStyles() {
+  if (document.getElementById('shared-board-css')) return;
+  const st = document.createElement('style');
+  st.id = 'shared-board-css';
+  st.textContent = [
+    '.mini-board { display:grid; grid-template-columns:repeat(4,1fr); gap:3px;',
+    '  background:#bbada0; border-radius:6px; padding:3px; aspect-ratio:1; }',
+    '.mini-cell { display:flex; align-items:center; justify-content:center;',
+    '  border-radius:4px; font-family:var(--mono, ui-monospace, monospace); font-weight:800;',
+    '  aspect-ratio:1; transition:background 0.15s; }',
+  ].join('\n');
+  document.head.appendChild(st);
+}
+
+// board は 2次元配列 board[r][c] (実値)。null/不正は空盤面として描画。
+function buildBoardHtml(board) {
+  injectBoardStyles();
+  const rows = (Array.isArray(board) && board.length === 4) ? board
+    : [[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]];
+  let html = '<div class="mini-board">';
+  for (let r = 0; r < 4; r++) {
+    for (let c = 0; c < 4; c++) {
+      const v = rows[r]?.[c] || 0;
+      if (v === 0) {
+        html += `<div class="mini-cell" style="background:${BOARD_EMPTY_BG}"></div>`;
+      } else {
+        const col = BOARD_TILE_COLORS[v] || BOARD_SUPER_COLOR;
+        const fs = v >= 1024 ? '0.7rem' : v >= 128 ? '0.85rem' : '1rem';
+        html += `<div class="mini-cell" style="background:${col.bg};color:${col.text};font-size:${fs}">${v}</div>`;
+      }
+    }
+  }
+  return html + '</div>';
+}
+
 function formatElapsed(first, last, server) {
   if (!first) return '--:--';
   const start = new Date(first).getTime();

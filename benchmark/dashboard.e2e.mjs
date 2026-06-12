@@ -44,8 +44,9 @@ const testRun = isAi ? join(PROJECT_ROOT, 'runs', 'claude-code', 'ai', 'results'
 if (testRun) {
   fs.mkdirSync(testRun, { recursive: true });
   const lines = [];
+  const E2E_BOARD = [[2, 4, 8, 16], [32, 64, 128, 256], [512, 1024, 2048, 0], [0, 0, 0, 0]];
   for (let i = 1; i <= 12; i++) {
-    lines.push(JSON.stringify({ result: i % 3 === 0 ? 'win' : 'loss', score: i * 2500, highest: 2048, moves: 100 + i, game: i, timestamp: `2026-01-01T00:${String(i).padStart(2, '0')}:00Z` }));
+    lines.push(JSON.stringify({ result: i % 3 === 0 ? 'win' : 'loss', score: i * 2500, highest: 2048, moves: 100 + i, game: i, board: E2E_BOARD, timestamp: `2026-01-01T00:${String(i).padStart(2, '0')}:00Z` }));
   }
   fs.writeFileSync(join(testRun, 'progress.log'), lines.join('\n'));
   fs.writeFileSync(join(testRun, 'meta.json'), JSON.stringify({ algo: 'rl', games: 12 }));
@@ -75,10 +76,23 @@ try {
     const lbText = await page.locator('#leaderboard').textContent();
     check('leaderboard に実データの bestScore(30,000) が表示', lbText.includes('30,000'));
     check('学習曲線 canvas が描画されている', (await page.locator('canvas[id^="chart-"]').count()) >= 1);
+    check('Live タブが存在', (await page.locator('.board-tab[data-view="live"]').count()) >= 1);
   } else {
     await sleep(500);
   }
   check('共通化した shared.js が読み込まれている', (await page.locator('script[src="/dashboard-shared.js"]').count()) === 1);
+
+  // --- 統一盤面 (全層共通: dashboard-shared.js の buildBoardHtml) ---
+  check('統一盤面 (.mini-board) が描画されている', (await page.locator('.mini-board').count()) >= 1);
+  if (isAi) {
+    // ダミーデータの盤面に 2048 タイルがあり、React版 constants.ts と同じ配色 (#edc22e) で塗られている
+    const has2048Color = await page.evaluate(() =>
+      [...document.querySelectorAll('.mini-cell')].some(
+        (c) => c.textContent === '2048' && c.style.background.replace(/\s/g, '') === 'rgb(237,194,46)'
+      )
+    );
+    check('盤面タイルが React版と同じ配色 (2048 = #edc22e)', has2048Color);
+  }
 
   // --- ボタンの存在と動作 ---
   check('Run ボタンが存在', (await page.locator('#btn-run').count()) === 1);
