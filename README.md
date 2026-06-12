@@ -152,6 +152,27 @@ Dashboard: `http://localhost:5050` — avg/max score, win rate, tile distributio
 
 Available algorithms (`ai/algorithms/`): `random`, `greedy`, `montecarlo`, `expectimax`, and `rl` (N-tuple TD learning — **~33k avg / 77% win rate** after ~250k games of pre-training, surpassing expectimax; with `RL_SAVE`/`RL_LOAD` model persistence so the trained model is reused).
 
+#### How the RL agent learns (`rl.mjs`)
+
+The RL agent is an **N-tuple network with afterstate TD(0)** — the classic 2048 RL method (Szubert & Jaśkowski 2014), implemented in pure JS with zero dependencies:
+
+- **Value function**: V(afterstate) approximated by 12 lookup tables (4 rows + 4 columns + 4 2×2 squares, each a 4-tuple over log2 tile values → 16⁴ entries per table).
+- **8-fold symmetry**: every board is evaluated/updated under all 8 symmetries of the square (4 rotations × 2 reflections), sharing weights for sample efficiency and generalization.
+- **Move selection**: greedy over `immediate reward + V(afterstate)` for each valid move.
+- **TD(0) update — every single move**: after choosing a move, the previous afterstate's value is nudged toward `reward + V(current afterstate)`; at game end it is nudged toward 0 (terminal).
+
+**Learning is always on and happens in real time** — playing *is* training. There is no separate "inference mode". What differs between runs is only where the weights start and whether they are persisted:
+
+| Mode | Command | Weights start from | Saved? |
+|---|---|---|---|
+| Default (dashboard **Run** with `rl`) | `--algo rl` | pre-trained `rl-model.bin` (deployed by setup) | no — learning continues in-memory, discarded at exit |
+| Learn from zero (watch the curve grow) | `RL_LOAD=0 ALGO=rl TOTAL_GAMES=1000 node ai/evaluate.mjs` | random (all zeros) | no |
+| Pre-train & persist | `RL_SAVE=1 RL_LOAD=0 ALGO=rl TOTAL_GAMES=50000 node ai/evaluate.mjs` | random | yes — written to `rl-model.bin` on exit |
+
+Env vars: `RL_LOAD=0` (skip loading the model), `RL_SAVE=1` (save on exit), `RL_MODEL=path` (model file path, default `ai/algorithms/rl-model.bin`).
+
+**Reading the dashboard's Score Learning Curve**: it plots the per-game scores of the current run. Start from zero and you literally watch real-time learning — measured on this machine: avg score **2,274 → 6,912 within 1,000 games (~1.3 s)**, max tile 512 → 1024. Start from the pre-trained model and the curve starts already high (**~63% win rate, avg ~29k, max tile 4096**) because the deployed model has ~250k games of training baked in — while still continuing to learn online during the run.
+
 Each agent implements `ai/my-ai.mjs` exporting:
 
 ```js
@@ -350,7 +371,7 @@ Dashboard: `http://localhost:6050` — same visualization as 5000-series (score 
 ## Testing
 
 ```bash
-npm test               # unit tests (game-engine + logic.ts parity + RL symmetry — 63 tests)
+npm test               # unit tests (game-engine + logic.ts parity + RL symmetry + run-control — 67 tests)
 npm run test:sh        # bash -n syntax check for all tier scripts (4000/5000/6000)
 npm run test:e2e       # 5000-tier dashboard E2E (Playwright, real data rendering + buttons)
 npm run test:e2e:4000  # 4000-tier dashboard E2E (buttons incl. Stop/Reset click-through)
