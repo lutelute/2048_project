@@ -37,6 +37,13 @@ get_port() {
   done
 }
 
+# ── ポートユーティリティ ──
+# lsof は環境状態 (SMBマウントやFDの多いプロセス) によって数十秒かかるため使わない。
+# LISTEN判定は nc の接続試行 (vite preview は ::1 のみで待つので IPv4/IPv6 両対応の localhost 解決が必須。
+# bash3.2 の /dev/tcp は IPv6 不可)。PID取得の lsof は3秒で諦める保険に留める
+port_listening() { nc -z localhost "$1" >/dev/null 2>&1; }
+port_pids() { perl -e 'alarm 3; exec @ARGV' -- lsof -ti ":$1" 2>/dev/null || true; }
+
 # 起動するエージェント
 AGENT_LIST=(claude-code codex gemini local-cli)
 
@@ -92,12 +99,12 @@ pkill -f "vite preview --port 40" 2>/dev/null || true
 pkill -f "vite --port 40" 2>/dev/null || true       # 旧dev方式の残骸
 pkill -f "npm exec vite" 2>/dev/null || true        # 詰まったnpx解決の残骸
 for port in 4000 4001 4002 4003 4004; do
-  lsof -ti :$port 2>/dev/null | xargs kill 2>/dev/null || true
+  port_pids "$port" | xargs kill 2>/dev/null || true
 done
 # ポート解放をポーリング (固定sleepより速く・確実)
-DEADLINE=$((SECONDS + 5))
+DEADLINE=$((SECONDS + 10))
 for port in 4000 4001 4002 4003 4004; do
-  while lsof -nP -i ":$port" -sTCP:LISTEN >/dev/null 2>&1 && [ "$SECONDS" -lt "$DEADLINE" ]; do
+  while port_listening "$port" && [ "$SECONDS" -lt "$DEADLINE" ]; do
     sleep 0.2
   done
 done
@@ -119,11 +126,11 @@ for NAME in "${AGENT_LIST[@]}"; do
   echo "  $NAME → :$PORT"
 done
 
-# 起動確認 (全ポートLISTENまでポーリング、最大15秒)
-DEADLINE=$((SECONDS + 15))
+# 起動確認 (全ポートLISTENまでポーリング。通常2秒、高負荷マシンでも粘れるよう上限60秒)
+DEADLINE=$((SECONDS + 60))
 for NAME in "${AGENT_LIST[@]}"; do
   PORT=$(get_port "$NAME")
-  until lsof -nP -i ":$PORT" -sTCP:LISTEN >/dev/null 2>&1; do
+  until port_listening "$PORT"; do
     if [ "$SECONDS" -ge "$DEADLINE" ]; then
       echo "  ✗ $NAME :$PORT FAILED (logs/vite-$PORT.log を確認)"
       exit 1
@@ -138,8 +145,8 @@ echo ""
 echo "ダッシュボード起動中..."
 node "$PROJECT_DIR/benchmark/dashboard-server.mjs" > "$PROJECT_DIR/logs/dashboard-4000.log" 2>&1 &
 DASHBOARD_PID=$!
-DEADLINE=$((SECONDS + 10))
-until lsof -nP -i :4000 -sTCP:LISTEN >/dev/null 2>&1; do
+DEADLINE=$((SECONDS + 30))
+until port_listening 4000; do
   if [ "$SECONDS" -ge "$DEADLINE" ]; then
     echo "  ✗ ダッシュボード :4000 FAILED (logs/dashboard-4000.log を確認)"
     exit 1

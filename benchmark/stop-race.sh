@@ -8,6 +8,9 @@
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
+# lsof は環境状態によって数十秒かかるため3秒で諦める (launch-race.sh と同じ方針)
+port_pids() { perl -e 'alarm 3; exec @ARGV' -- lsof -ti ":$1" 2>/dev/null || true; }
+
 echo "=== 2048 AI Benchmark — 停止中 ==="
 
 # play.mjs プロセスを停止
@@ -23,7 +26,7 @@ pkill -f "npm exec vite" 2>/dev/null || true
 
 # ポート 4000-4004 のプロセスを停止
 for port in 4000 4001 4002 4003 4004; do
-  PID=$(lsof -ti :$port 2>/dev/null)
+  PID=$(port_pids "$port")
   if [ -n "$PID" ]; then
     kill $PID 2>/dev/null
     echo "  ✓ :$port 停止 (PID $PID)"

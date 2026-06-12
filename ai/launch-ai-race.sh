@@ -124,10 +124,14 @@ if [ "$ERRORS" -eq 1 ]; then
   exit 1
 fi
 
+# ── ポートユーティリティ (lsofは環境状態で数十秒かかるため nc 接続試行で判定 + 3秒上限の保険) ──
+port_listening() { nc -z localhost "$1" >/dev/null 2>&1; }
+port_pids() { perl -e 'alarm 3; exec @ARGV' -- lsof -ti ":$1" 2>/dev/null || true; }
+
 # ── 1. 既存プロセスを停止 ──
 echo "既存プロセスをクリーンアップ..."
 pkill -f "evaluate.mjs" 2>/dev/null || true
-lsof -ti :5050 2>/dev/null | xargs kill 2>/dev/null || true
+port_pids 5050 | xargs kill 2>/dev/null || true
 sleep 1
 
 # ── 1.5. 過去の結果をクリア（ダッシュボードを0からスタート）──
@@ -144,8 +148,8 @@ echo "ダッシュボード起動中..."
 mkdir -p "$PROJECT_DIR/logs"
 node "$SCRIPT_DIR/dashboard-ai-server.mjs" > "$PROJECT_DIR/logs/dashboard-5050.log" 2>&1 &
 DASHBOARD_PID=$!
-DEADLINE=$((SECONDS + 10))
-until lsof -nP -i :5050 -sTCP:LISTEN >/dev/null 2>&1; do
+DEADLINE=$((SECONDS + 30))
+until port_listening 5050; do
   if [ "$SECONDS" -ge "$DEADLINE" ]; then
     echo "  ダッシュボード :5050 FAILED (logs/dashboard-5050.log を確認)"
     exit 1

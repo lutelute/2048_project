@@ -53,7 +53,8 @@ if (testRun) {
 }
 
 // 残存サーバーを kill してポート競合を防ぐ (競合すると古いサーバーに繋がり描画検証が落ちて不安定になる)
-try { execSync(`lsof -ti :${PORT} 2>/dev/null | xargs kill 2>/dev/null`, { shell: '/bin/bash' }); } catch { /* none */ }
+// lsof は環境状態で数十秒かかることがあるため3秒で諦める (殺し損ねても --strictPort 起動失敗で気付ける)
+try { execSync(`perl -e 'alarm 3; exec @ARGV' -- lsof -ti :${PORT} 2>/dev/null | xargs kill 2>/dev/null`, { shell: '/bin/bash' }); } catch { /* none */ }
 await sleep(300);
 const server = spawn('node', [SERVER], { cwd: PROJECT_ROOT, env: { ...process.env, PORT }, stdio: 'ignore', detached: true });
 await sleep(1600);

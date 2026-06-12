@@ -10,8 +10,9 @@ PROJECT_DIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
 echo "=== 2048 AI Self-Improve — 停止中 ==="
 
-# ダッシュボードサーバー停止
-lsof -ti :6050 2>/dev/null | xargs kill 2>/dev/null \
+# ダッシュボードサーバー停止 (lsofは環境状態で数十秒かかるため3秒上限)
+port_pids() { perl -e 'alarm 3; exec @ARGV' -- lsof -ti ":$1" 2>/dev/null || true; }
+port_pids 6050 | xargs kill 2>/dev/null \
   && echo "  ✓ ダッシュボード :6050 停止" \
   || echo "  - ダッシュボード停止済み"
 

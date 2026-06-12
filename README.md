@@ -95,6 +95,11 @@ When an agent finishes:
 
 Run 4 AI agents side-by-side with a real-time dashboard. Each agent plays the game in its own browser window using a heuristic AI, and results are streamed to a live dashboard.
 
+<p align="center">
+  <img src="benchmark/assets/race-demo.gif" alt="4-agent race dashboard — live scores, learning curves and boards (captured with Playwright)" width="720" />
+</p>
+<p align="center"><sub>Live race dashboard (<code>:4000</code>) captured with Playwright — scores, learning curves, tile distributions and the unified board view update in real time.</sub></p>
+
 ```bash
 # 1. Setup (one time only)
 #    - Clones the repo into runs/{agent} directories
@@ -149,6 +154,11 @@ RL_SAVE=1 RL_LOAD=0 ALGO=rl TOTAL_GAMES=50000 node ai/evaluate.mjs
 ```
 
 Dashboard: `http://localhost:5050` — avg/max score, win rate, tile distribution, learning curves, mini boards. **Run / Stop / Reset buttons** control races from the browser; select **Algo = compare** to pit all algorithms against each other.
+
+<p align="center">
+  <img src="benchmark/assets/demo-live-5050.png" alt="Headless dashboard with live board view — 4 algorithms competing" width="720" />
+</p>
+<p align="center"><sub>Headless dashboard (<code>:5050</code>) — the <strong>Live</strong> board tab streams each agent's current game in real time, using the same board styling as the React game.</sub></p>
 
 Available algorithms (`ai/algorithms/`): `random`, `greedy`, `montecarlo`, `expectimax`, and `rl` (N-tuple TD learning — **~33k avg / 77% win rate** after ~250k games of pre-training, surpassing expectimax; with `RL_SAVE`/`RL_LOAD` model persistence so the trained model is reused).
 
