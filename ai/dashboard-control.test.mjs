@@ -5,7 +5,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { clampInt, handleControlRoute } from './dashboard-control.mjs';
+import { clampInt, handleControlRoute, buildAlgoLaunchArgs } from './dashboard-control.mjs';
 
 test('clampInt: 範囲内はそのまま', () => {
   assert.equal(clampInt(50, 1, 100, 10), 50);
@@ -32,6 +32,43 @@ test('clampInt: 非数値はデフォルト', () => {
 test('clampInt: 文字列の数値はパースしてクランプ', () => {
   assert.equal(clampInt('50', 1, 100, 10), 50);
   assert.equal(clampInt('999', 1, 100, 10), 100);
+});
+
+// ── Run の algo 伝播 (「Runすると毎回rlになる」報告の回帰テスト) ──
+
+test('buildAlgoLaunchArgs: 選択した algo がそのまま --algo に伝わる', () => {
+  assert.deepEqual(buildAlgoLaunchArgs({ games: 3, algo: 'greedy' }), ['3', '--algo', 'greedy']);
+  assert.deepEqual(buildAlgoLaunchArgs({ games: 100, algo: 'montecarlo' }), ['100', '--algo', 'montecarlo']);
+  assert.deepEqual(buildAlgoLaunchArgs({ games: 100, algo: 'expectimax' }), ['100', '--algo', 'expectimax']);
+});
+
+test('buildAlgoLaunchArgs: 不正な algo は rl にフォールバック (インジェクション対策)', () => {
+  assert.deepEqual(buildAlgoLaunchArgs({ games: 3, algo: 'evil; rm -rf /' }), ['3', '--algo', 'rl']);
+  assert.deepEqual(buildAlgoLaunchArgs({ games: 3, algo: '' }), ['3', '--algo', 'rl']);
+  assert.deepEqual(buildAlgoLaunchArgs({ games: 3 }), ['3', '--algo', 'rl']);
+});
+
+test('buildAlgoLaunchArgs: compare は --algos 4種に展開', () => {
+  assert.deepEqual(buildAlgoLaunchArgs({ games: 3, algo: 'compare' }),
+    ['3', '--algos', 'rl,expectimax,montecarlo,greedy']);
+});
+
+test('handleControlRoute: POST /api/run は body の algo を起動引数に伝える', async () => {
+  const url = new URL('http://localhost:5050/api/run');
+  const req = {
+    method: 'POST',
+    async *[Symbol.asyncIterator]() { yield Buffer.from(JSON.stringify({ games: 5, algo: 'greedy' })); },
+  };
+  let payload = null;
+  const res = { writeHead: () => {}, end: (s) => { payload = JSON.parse(s); } };
+  const handled = await handleControlRoute(req, res, url, {
+    projectRoot: '/tmp',
+    launchScript: '/usr/bin/true',   // 実レースは起動しない
+    buildLaunchArgs: buildAlgoLaunchArgs,
+  });
+  assert.equal(handled, true);
+  assert.equal(payload.ok, true);
+  assert.deepEqual(payload.args, ['5', '--algo', 'greedy'], 'greedy 指定が rl に化けない');
 });
 
 test('handleControlRoute: 未知パスは false を返し何もしない', async () => {

@@ -67,3 +67,13 @@ export function clampInt(v, min, max, dflt) {
   const n = parseInt(v, 10);
   return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : dflt;
 }
+
+// 5000/6000番台: Run リクエスト → launch-ai-race.sh の引数 (algo はホワイトリスト検証)
+export const ALLOWED_ALGOS = ['rl', 'expectimax', 'montecarlo', 'greedy', 'random'];
+export function buildAlgoLaunchArgs(p) {
+  const games = String(clampInt(p.games, 1, 100000, 2000));
+  // compare: 4種を各エージェントに割り当てて同時比較 (claude=rl, codex=expectimax, gemini=montecarlo, local=greedy)
+  if (p.algo === 'compare') return [games, '--algos', 'rl,expectimax,montecarlo,greedy'];
+  const algo = ALLOWED_ALGOS.includes(p.algo) ? p.algo : 'rl';
+  return [games, '--algo', algo];
+}

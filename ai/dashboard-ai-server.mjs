@@ -2,7 +2,7 @@ import { createServer } from 'node:http';
 import { readFile, readdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { handleControlRoute, clampInt } from './dashboard-control.mjs';
+import { handleControlRoute, clampInt, buildAlgoLaunchArgs } from './dashboard-control.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, '..');
@@ -222,14 +222,7 @@ const server = createServer(async (req, res) => {
   if (await handleControlRoute(req, res, url, {
     projectRoot: PROJECT_ROOT,
     launchScript: join(PROJECT_ROOT, 'ai', 'launch-ai-race.sh'),
-    buildLaunchArgs: (p) => {
-      const games = String(clampInt(p.games, 1, 100000, 2000));
-      // compare: 4種を各エージェントに割り当てて同時比較 (claude=rl, codex=expectimax, gemini=montecarlo, local=greedy)
-      if (p.algo === 'compare') return [games, '--algos', 'rl,expectimax,montecarlo,greedy'];
-      const ALLOWED = ['rl', 'expectimax', 'montecarlo', 'greedy', 'random'];
-      const algo = ALLOWED.includes(p.algo) ? p.algo : 'rl';
-      return [games, '--algo', algo];
-    },
+    buildLaunchArgs: buildAlgoLaunchArgs,  // games + algo の検証は dashboard-control.mjs (ユニットテスト対象)
     buildLaunchEnv: (p) => ({ ...process.env, GAME_DELAY_MS: String(clampInt(p.delay, 0, 5000, 0)) }),
     resetCmd: 'pkill -f evaluate.mjs 2>/dev/null; rm -rf runs/*/ai/results/run-* runs/*/ai/results/progress.log; true',
     stopCmd: 'pkill -f evaluate.mjs 2>/dev/null; true',

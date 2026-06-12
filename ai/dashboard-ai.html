@@ -459,6 +459,29 @@ document.addEventListener('click', (e) => {
 });
 
 // ── レース操作 (Run / Reset) ──
+// コントロール値 (games/algo/delay) を localStorage に保存・復元する。
+// Run 後の自動リロードでセレクタがデフォルト(rl)に戻り「毎回rlになる」ように見えた問題の対策。
+const CTL_KEY = 'ai-dash-controls';
+(function restoreControls() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CTL_KEY) || '{}');
+    if (saved.games) document.getElementById('ctl-games').value = saved.games;
+    if (saved.algo) document.getElementById('ctl-algo').value = saved.algo;
+    if (saved.delay != null && saved.delay !== '') document.getElementById('ctl-delay').value = saved.delay;
+  } catch { /* 初回 or 破損時はデフォルトのまま */ }
+})();
+['ctl-games', 'ctl-algo', 'ctl-delay'].forEach((id) => {
+  document.getElementById(id).addEventListener('change', () => {
+    try {
+      localStorage.setItem(CTL_KEY, JSON.stringify({
+        games: document.getElementById('ctl-games').value,
+        algo: document.getElementById('ctl-algo').value,
+        delay: document.getElementById('ctl-delay').value,
+      }));
+    } catch { /* private mode 等では保存しない */ }
+  });
+});
+
 function ctlMsg(m){ const e=document.getElementById('ctl-msg'); if(e) e.textContent=m; }
 document.getElementById('btn-run').addEventListener('click', async () => {
   const games = parseInt(document.getElementById('ctl-games').value, 10) || 2000;

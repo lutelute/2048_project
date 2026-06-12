@@ -110,6 +110,23 @@ try {
 
   if ((await page.locator('#ctl-algo').count()) > 0) {
     check('compare オプションが存在', (await page.locator('#ctl-algo option[value="compare"]').count()) > 0);
+
+    // --- Run の algo 伝播 + 選択の永続化 (「Runすると毎回rlになる」報告の回帰テスト) ---
+    // 1. greedy を選択 → リロードしても選択が維持される (localStorage 永続化)
+    await page.selectOption('#ctl-algo', 'greedy');
+    await page.reload({ waitUntil: 'networkidle' });
+    check('リロード後も algo の選択 (greedy) が維持される', (await page.locator('#ctl-algo').inputValue()) === 'greedy');
+
+    // 2. Run クリック → POST body に選択した algo が乗る (interceptして実起動はしない)
+    let runBody = null;
+    await page.route('**/api/run', async (route) => {
+      runBody = JSON.parse(route.request().postData() || '{}');
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, args: [] }) });
+    });
+    await page.click('#btn-run');
+    await sleep(600);
+    check('Run が選択した algo (greedy) を POST する (rl に化けない)', runBody?.algo === 'greedy');
+    await page.unroute('**/api/run');
   }
 
   check('ページエラーなし', errors.length === 0);
